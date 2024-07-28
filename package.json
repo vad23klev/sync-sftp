@@ -1,0 +1,71 @@
+{
+  "name": "sync-sftp",
+  "publisher": "vad23klev",
+  "displayName": "Sync SFTP",
+  "description": "Sync your project with remote using SFTP",
+  "icon": "./icons/icon.png",
+  "version": "0.3.0",
+  "engines": {
+    "vscode": "^1.91.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "repository": {
+    "url": "https://github.com/vad23klev/sync-sftp"
+  },
+  "activationEvents": [
+    "workspaceContains:**/.sync-sftp.json"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "sync-sftp.clearLog",
+        "category": "Sync SFTP",
+        "title": "Sync SFTP: Clear",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "sync-sftp.upload",
+        "title": "Sync SFTP: Upload file"
+      }
+    ],
+    "views": {
+      "explorer": [
+        {
+          "type": "webview",
+          "id": "sync-sftp.logView",
+          "name": "Sync SFTP"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "sync-sftp.clearLog",
+          "group": "navigation",
+          "when": "view == sync-sftp.logView"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "sync-sftp.upload",
+          "group": "sync-sftp"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "pretest": "npm run lint"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0"
+  },
+  "dependencies": {
+    "node-watch": "^0.7",
+    "relaxed-json": "^1.0.0",
+    "sftps": "^0.2.8"
+  }
+}
