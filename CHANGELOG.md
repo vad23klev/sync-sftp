@@ -1,9 +1,11 @@
 # Change Log
 
-All notable changes to the "sync-sftp" extension will be documented in this file.
-
-Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
-
-## [Unreleased]
+## [0.3.2]
 
 - Initial release
+
+## [0.3.10]
+
+- Add error on trying upload ignore file
+- Mesasges are shorter now
+- Add "Reload config button"

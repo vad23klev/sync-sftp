@@ -4,7 +4,7 @@
   "displayName": "Sync SFTP",
   "description": "Sync your project with remote using SFTP",
   "icon": "./icons/icon.png",
-  "version": "0.3.2",
+  "version": "0.3.10",
   "engines": {
     "vscode": "^1.91.0"
   },
@@ -21,11 +21,18 @@
   "contributes": {
     "commands": [
       {
+        "command": "sync-sftp.reloadConfig",
+        "category": "Sync SFTP",
+        "title": "Sync SFTP: Reload Configuration",
+        "icon": "$(debug-restart)"
+      },
+      {
         "command": "sync-sftp.clearLog",
         "category": "Sync SFTP",
         "title": "Sync SFTP: Clear",
         "icon": "$(clear-all)"
       },
+
       {
         "command": "sync-sftp.upload",
         "title": "Sync SFTP: Upload file"
@@ -42,6 +49,11 @@
     },
     "menus": {
       "view/title": [
+        {
+          "command": "sync-sftp.reloadConfig",
+          "group": "navigation",
+          "when": "view == sync-sftp.logView"
+        },
         {
           "command": "sync-sftp.clearLog",
           "group": "navigation",

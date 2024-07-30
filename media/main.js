@@ -21,7 +21,6 @@ window.addEventListener("message", (event) => {
         sftpMessages = [];
         vscode.setState({ sftpMessages });
         let highlightedItems = document.querySelectorAll("#root div");
-        console.log(highlightedItems)
         highlightedItems.forEach((userItem) => {
             userItem.remove()
         });

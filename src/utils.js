@@ -73,7 +73,7 @@ const match = exports.match  = function (item, ignorePatterns) {
 const timeString = exports.timeString = function () {
     const now = new Date();
     const minutes = '0' + now.getMinutes();
-    return now.getHours() + ':' + minutes.slice(-2);
+    return '[' + now.getHours() + ':' + minutes.slice(-2) + ']: ';
 }
 
 
@@ -104,19 +104,19 @@ const syncDirectory = function (localFilename, destination, filter, sftp, append
     }
 };
 
-exports.syncFile = function ({filter, rootPath, ignorePatterns, remotePath, appendMessage, sftp}) {
+exports.syncFile = function ({filter, rootPath, ignorePatterns, remotePath, appendMessage, sftp, onIgnore}) {
     return function(filename) {
         if (!match(filename, ignorePatterns)) {
             const time = timeString();
 
             appendMessage({
                 type: 'info',
-                value: time + ' Change detected: ' + filename
+                value: time + ' Change detected: ' + filename.replace(rootPath, '')
             })
 
             let isDirectory = false;
             const exists = fs.existsSync('./' + filename);
-            let destination = remotePath + '/' + filename.replace(rootPath, '');
+            let destination = remotePath + '/' + filename.replace(rootPath, '.');
             destination = destination.replace(/\\/g, '/');
             destination = destination.replace(/\/\/+/g, '/');
 
@@ -141,7 +141,8 @@ exports.syncFile = function ({filter, rootPath, ignorePatterns, remotePath, appe
                 sftp.raw('rm ' + destination + '/*');
                 sftp.raw('rmdir ' + destination);
             }
-
+        } else {
+            onIgnore(filename)
         }
     }
 }
