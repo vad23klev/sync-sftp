@@ -1,14 +1,15 @@
 const vscode = require('vscode');
 const watch = require('node-watch');
 const fs = require('fs');
-const SFTPS = require('sftps');
 const RJSON = require('relaxed-json');
 const utils = require('./utils');
+const {NodeSSH} = require('node-ssh')
+let watcher = null
 
 /**
  * @param {vscode.ExtensionContext} context
  */
-function activate(context) {
+async function activate(context) {
 	console.log('Congratulations, your extension "sync-sftp" is now active!');
 	let rootPath = vscode.workspace.workspaceFolders[0].uri.path;
 	let configText = fs.readFileSync(rootPath + '/.sync-sftp.json')
@@ -17,9 +18,6 @@ function activate(context) {
 
 	let errors = []
 	let options = {}
-
-	const scanInterval = 1000;
-	const sshOptions = {};
 
 	let ignorePatterns = '';
 	let host = '';
@@ -93,45 +91,17 @@ function activate(context) {
 		if (password && password.length > 0) {
 			options['password'] = password;
 		}
-
-		if (Object.keys(sshOptions).length > 0) {
-			options['sshOptions'] = sshOptions;
-		}
 		// Create SFTP connection
-		sftp = new SFTPS(options);
-		// Create scan function that runs & empties the SFTP queue every second
-		const scan = function () {
-			if (sftp.cmds.length > 0) {
-				sftp.exec(function (err, res) {
-					if (err) {
-						appendMessage({
-							type: 'error',
-							value: err
-						})
-					} else if (res.data) {
-						const time = utils.timeString();
-						const numberOfItems = res.data.split('\n').length - 1;
-
-						appendMessage({
-							type: 'info-success',
-							value: time + ' Succesfully uploaded ' + numberOfItems + ' file(s)'
-						})
-					}
-				});
-			}
-			setTimeout(scan, scanInterval);
-		};
-		setTimeout(scan, scanInterval);
-
-
-		let filter = () => {
-			return true
-		}
-
-		let onIgnore = (filename) => {}
-		const syncFileWatcher = utils.syncFile({filter, rootPath, ignorePatterns, remotePath, appendMessage, sftp, onIgnore});
+		sftp = new NodeSSH();
+		await sftp.connect(options)
+		appendMessage({
+			type: 'info-success',
+			value: 'Config load success: ' + rootPath
+		})
+		let onIgnore = () => {}
+		const syncFileWatcher = utils.syncFile({rootPath, ignorePatterns, remotePath, appendMessage, sftp, onIgnore});
 		// Initiate the watcher
-		watch(
+		watcher = watch(
 			rootPath,
 			{
 				recursive: true,
@@ -173,9 +143,6 @@ function activate(context) {
 			})
 		}
 		if (info && info.scheme === 'file' && configLoad && configCorrect) {
-			let filter = (filename) => {
-				return utils.match(filename, ignorePatterns)
-			}
 			let onIgnore = (filename) => {
 				const time = utils.timeString();
 				appendMessage({
@@ -183,7 +150,7 @@ function activate(context) {
 					value: time + 'Trying to upload ignored file: ' + filename
 				})
 			}
-			const syncFileCommand = utils.syncFile({filter, rootPath, ignorePatterns, remotePath, appendMessage, sftp, onIgnore});
+			const syncFileCommand = utils.syncFile({rootPath, ignorePatterns, remotePath, appendMessage, sftp, onIgnore});
 			for (let file of allSelections) {
 				let filename = file.path
 				// Upload if it doesn't match the ignorePatterns
@@ -191,7 +158,7 @@ function activate(context) {
 			}
 		}
 	});
-	const reload = vscode.commands.registerCommand('sync-sftp.reloadConfig', function () {
+	const reload = vscode.commands.registerCommand('sync-sftp.reloadConfig', async function () {
 		appendMessage({
 			type: 'clear'
 		})
@@ -249,15 +216,17 @@ function activate(context) {
 				port: port,
 				autoConfirm: true,
 			};
+
 			if (password && password.length > 0) {
 				options['password'] = password;
 			}
-
-			if (Object.keys(sshOptions).length > 0) {
-				options['sshOptions'] = sshOptions;
-			}
 			// Create SFTP connection
-			sftp = new SFTPS(options);
+			sftp = new NodeSSH();
+			await sftp.connect(options)
+			appendMessage({
+				type: 'info-success',
+				value: 'Config reload success: ' + rootPath
+			})
 		}
 	});
 
@@ -267,7 +236,11 @@ function activate(context) {
 }
 
 // This method is called when your extension is deactivated
-function deactivate() {}
+function deactivate() {
+	if (watcher && !watcher.isClosed()) {
+		watcher.close()
+	}
+}
 
 
 module.exports = {

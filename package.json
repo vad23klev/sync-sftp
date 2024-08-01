@@ -4,7 +4,7 @@
   "displayName": "Sync SFTP",
   "description": "Sync your project with remote using SFTP",
   "icon": "./icons/icon.png",
-  "version": "0.3.10",
+  "version": "0.3.30",
   "engines": {
     "vscode": "^1.91.0"
   },
@@ -32,7 +32,6 @@
         "title": "Sync SFTP: Clear",
         "icon": "$(clear-all)"
       },
-
       {
         "command": "sync-sftp.upload",
         "title": "Sync SFTP: Upload file"
@@ -76,8 +75,8 @@
     "eslint": "^8.57.0"
   },
   "dependencies": {
+    "node-ssh": "^13.2.0",
     "node-watch": "^0.7",
-    "relaxed-json": "^1.0.0",
-    "sftps": "^0.2.8"
+    "relaxed-json": "^1.0.0"
   }
 }

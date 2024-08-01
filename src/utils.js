@@ -1,5 +1,6 @@
 const vscode = require('vscode');
 const fs = require('fs');
+const path = require('path')
 
 function getNonce() {
     let text = '';
@@ -76,39 +77,11 @@ const timeString = exports.timeString = function () {
     return '[' + now.getHours() + ':' + minutes.slice(-2) + ']: ';
 }
 
-
-const syncDirectory = function (localFilename, destination, filter, sftp, appendMessage) {
-    let filename = '';
-    let isDirectory = false;
-
-    destination = destination.replace(/\\/g, '/');
-    destination = destination.replace(/\/\/+/g, '/');
-
-    sftp.raw('mkdir ' + destination);
-    const dirList = fs.readdirSync('./' + localFilename);
-
-    for (const element of dirList) {
-        filename = element;
-        if (filter(filename)) {
-            isDirectory = fs.lstatSync(localFilename + '/' + filename).isDirectory();
-            if (isDirectory) {
-                syncDirectory(localFilename + '/' + filename, destination, filter, sftp, appendMessage);
-            } else {
-                appendMessage({
-                    type: 'info',
-                    value: 'Uploading to -> ' + destination
-                })
-                sftp.put(localFilename + '/' + filename, destination);
-            }
-        }
-    }
-};
-
-exports.syncFile = function ({filter, rootPath, ignorePatterns, remotePath, appendMessage, sftp, onIgnore}) {
-    return function(filename) {
+exports.syncFile = function ({rootPath, ignorePatterns, remotePath, appendMessage, sftp, onIgnore}) {
+    return async function(filename) {
         if (!match(filename, ignorePatterns)) {
-            const time = timeString();
-
+            let time = timeString();
+            console.log(filename);
             appendMessage({
                 type: 'info',
                 value: time + ' Change detected: ' + filename.replace(rootPath, '')
@@ -128,18 +101,55 @@ exports.syncFile = function ({filter, rootPath, ignorePatterns, remotePath, appe
 
                 isDirectory = fs.lstatSync('./' + filename).isDirectory();
                 if (isDirectory) {
-                    syncDirectory(filename, destination, filter, sftp, appendMessage);
+                    const failed = []
+                    const successful = []
+                    await sftp.putDirectory(
+                        './' + filename,
+                        destination,
+                        {
+                            recursive: true,
+                            concurrency: 5,
+                            validate: function(itemPath) {
+                                const baseName = path.basename(itemPath)
+                                return !match(baseName, ignorePatterns) // do not allow node_modules
+                            },
+                            tick: function(localPath, remotePath, error) {
+                                if (error) {
+                                    failed.push(remotePath)
+                                } else {
+                                    successful.push(remotePath)
+                                }
+                            }
+                        }
+                    )
+                    time = timeString();
+                    for (const success of successful) {
+                        appendMessage({
+                            type: 'info',
+                            value: time + ' Uploading to -> ' + success
+                        })
+                    }
+                    for (const fail of failed) {
+                        appendMessage({
+                            type: 'error',
+                            value: time + ' Uploading to -> ' + fail
+                        })
+                    }
+                    appendMessage({
+                        type: 'info-success',
+                        value: time + ' Succesfully uploaded ' + successful.length + ' file(s)'
+                    })
                 } else {
-                    sftp.put('./' + filename, destination);
+                    await sftp.putFile('./' + filename, destination);
                 }
             } else {
                 appendMessage({
                     type: 'info',
                     value: time + ' Delete detected on ' + filename + '. Deleting server file -> ' + destination
                 })
-                sftp.rm(destination);
-                sftp.raw('rm ' + destination + '/*');
-                sftp.raw('rmdir ' + destination);
+                sftp.execCommand('rm ' + destination,{ cwd:'/var/www' });
+                sftp.execCommand('rm ' + destination + '/*',{ cwd:'/var/www' });
+                sftp.execCommand('rmdir ' + destination, { cwd:'/var/www' });
             }
         } else {
             onIgnore(filename)
