@@ -1,6 +1,7 @@
 const vscode = require('vscode');
 const fs = require('fs');
 const path = require('path')
+const RJSON = require('relaxed-json');
 
 function getNonce() {
     let text = '';
@@ -77,24 +78,24 @@ const timeString = exports.timeString = function () {
     return '[' + now.getHours() + ':' + minutes.slice(-2) + ']: ';
 }
 
-exports.syncFile = function ({rootPath, ignorePatterns, remotePath, appendMessage, sftp, onIgnore}) {
+exports.syncFile = function (data) {
     return async function(filename) {
-        if (!match(filename, ignorePatterns)) {
+        if (!match(filename, data.ignorePatterns)) {
             let time = timeString();
             console.log(filename);
-            appendMessage({
+            data.appendMessage({
                 type: 'info',
-                value: time + ' Change detected: ' + filename.replace(rootPath, '')
+                value: time + ' Change detected: ' + filename.replace(data.rootPath, '')
             })
 
             let isDirectory = false;
             const exists = fs.existsSync('./' + filename);
-            let destination = remotePath + '/' + filename.replace(rootPath, '.');
+            let destination = data.remotePath + '/' + filename.replace(data.rootPath, '.');
             destination = destination.replace(/\\/g, '/');
             destination = destination.replace(/\/\/+/g, '/');
 
             if (exists) {
-                appendMessage({
+                data.appendMessage({
                     type: 'info',
                     value: time + ' Uploading to -> ' + destination
                 })
@@ -103,7 +104,7 @@ exports.syncFile = function ({rootPath, ignorePatterns, remotePath, appendMessag
                 if (isDirectory) {
                     const failed = []
                     const successful = []
-                    await sftp.putDirectory(
+                    await data.sftp.putDirectory(
                         './' + filename,
                         destination,
                         {
@@ -111,7 +112,7 @@ exports.syncFile = function ({rootPath, ignorePatterns, remotePath, appendMessag
                             concurrency: 5,
                             validate: function(itemPath) {
                                 const baseName = path.basename(itemPath)
-                                return !match(baseName, ignorePatterns) // do not allow node_modules
+                                return !match(baseName, data.ignorePatterns) // do not allow node_modules
                             },
                             tick: function(localPath, remotePath, error) {
                                 if (error) {
@@ -124,35 +125,89 @@ exports.syncFile = function ({rootPath, ignorePatterns, remotePath, appendMessag
                     )
                     time = timeString();
                     for (const success of successful) {
-                        appendMessage({
+                        data.appendMessage({
                             type: 'info',
                             value: time + ' Uploading to -> ' + success
                         })
                     }
                     for (const fail of failed) {
-                        appendMessage({
+                        data.appendMessage({
                             type: 'error',
                             value: time + ' Uploading to -> ' + fail
                         })
                     }
-                    appendMessage({
+                    data.appendMessage({
                         type: 'info-success',
                         value: time + ' Succesfully uploaded ' + successful.length + ' file(s)'
                     })
                 } else {
-                    await sftp.putFile('./' + filename, destination);
+                    await data.sftp.putFile('./' + filename, destination);
                 }
             } else {
-                appendMessage({
+                data.appendMessage({
                     type: 'info',
                     value: time + ' Delete detected on ' + filename + '. Deleting server file -> ' + destination
                 })
-                sftp.execCommand('rm ' + destination,{ cwd:'/var/www' });
-                sftp.execCommand('rm ' + destination + '/*',{ cwd:'/var/www' });
-                sftp.execCommand('rmdir ' + destination, { cwd:'/var/www' });
+                data.sftp.execCommand('rm ' + destination,{ cwd:'/var/www' });
+                data.sftp.execCommand('rm ' + destination + '/*',{ cwd:'/var/www' });
+                data.sftp.execCommand('rmdir ' + destination, { cwd:'/var/www' });
             }
         } else {
-            onIgnore(filename)
+            data.onIgnore(filename)
         }
+    }
+}
+
+exports.loadConfig = async function(rootPath) {
+    let configText = fs.readFileSync(rootPath + '/.sync-sftp.json')
+    let ignorePatterns = [];
+    let host = '';
+    let username = '';
+    let password = '';
+    let port = 22;
+    let remotePath = '';
+    let errors = []
+    let options = {}
+    try {
+        let options = Buffer.from(configText).toString('utf8')
+        const config = RJSON.parse(options);
+        host = config.host;
+        username = config.user;
+
+        ignorePatterns = config.ignore_regexes;
+        remotePath = config.remote_path;
+
+        // If port is set in config file (Like in Sublime) then use that, default is 22
+        if (config.port) {
+            port = config.port;
+        }
+
+        // If password is set in config file (Like in Sublime) then use that
+        if (config.password) {
+            password = config.password;
+        } else {
+            errors.push('Error: Unable to retrieve password from sftp-config.json or keychain!')
+        }
+    } catch (e) {
+        errors.push('Error: Unable to parse sftp-config.json!')
+    }
+
+    if (errors.length === 0) {
+        options = {
+            host: host, // required
+            username: username, // required
+            port: port,
+            autoConfirm: true,
+        };
+        if (password && password.length > 0) {
+            options['password'] = password;
+        }
+    }
+    return {
+        sftpOptions: options,
+        ignorePatterns,
+        remotePath,
+        errors,
+        rootPath
     }
 }

@@ -4,7 +4,7 @@
   "displayName": "Sync SFTP",
   "description": "Sync your project with remote using SFTP",
   "icon": "./icons/icon.png",
-  "version": "0.3.30",
+  "version": "0.3.45",
   "engines": {
     "vscode": "^1.91.0"
   },
@@ -25,6 +25,19 @@
         "category": "Sync SFTP",
         "title": "Sync SFTP: Reload Configuration",
         "icon": "$(debug-restart)"
+      },
+      {
+        "command": "sync-sftp.reconnect",
+        "category": "Sync SFTP",
+        "title": "Sync SFTP: Reconnect",
+        "icon": "$(debug-disconnect)"
+      },
+
+      {
+        "command": "sync-sftp.reupload",
+        "category": "Sync SFTP",
+        "title": "Sync SFTP: Reupload",
+        "icon": "$(cloud-upload)"
       },
       {
         "command": "sync-sftp.clearLog",
@@ -49,13 +62,23 @@
     "menus": {
       "view/title": [
         {
+          "command": "sync-sftp.reupload",
+          "group": "navigation@0",
+          "when": "view == sync-sftp.logView"
+        },
+        {
+          "command": "sync-sftp.reconnect",
+          "group": "navigation@1",
+          "when": "view == sync-sftp.logView"
+        },
+        {
           "command": "sync-sftp.reloadConfig",
-          "group": "navigation",
+          "group": "navigation@2",
           "when": "view == sync-sftp.logView"
         },
         {
           "command": "sync-sftp.clearLog",
-          "group": "navigation",
+          "group": "navigation@3",
           "when": "view == sync-sftp.logView"
         }
       ],
