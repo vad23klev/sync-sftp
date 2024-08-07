@@ -4,7 +4,7 @@
   "displayName": "Sync SFTP",
   "description": "Sync your project with remote using SFTP",
   "icon": "./icons/icon.png",
-  "version": "0.3.45",
+  "version": "0.3.50",
   "engines": {
     "vscode": "^1.91.0"
   },
@@ -32,7 +32,6 @@
         "title": "Sync SFTP: Reconnect",
         "icon": "$(debug-disconnect)"
       },
-
       {
         "command": "sync-sftp.reupload",
         "category": "Sync SFTP",
@@ -100,6 +99,7 @@
   "dependencies": {
     "node-ssh": "^13.2.0",
     "node-watch": "^0.7",
+    "ping": "^0.4.4",
     "relaxed-json": "^1.0.0"
   }
 }

@@ -25,3 +25,8 @@
 - Add reconnect button
 - Add connection status to status bar
 - Add reupload button for files with errors
+
+## [0.3.50]
+
+- Add PING to check sftp server is alive, because NodeSSH have long timeout
+- Add break word to messages, for remove horizontal scroll

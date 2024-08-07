@@ -2,6 +2,7 @@ const vscode = require('vscode');
 const watch = require('node-watch');
 const utils = require('./utils');
 const {NodeSSH} = require('node-ssh')
+const ping = require('ping');
 
 let watcher = null
 let statusBarInterval = null
@@ -98,22 +99,31 @@ function activate(context) {
             appendMessage({
                 type: 'clear'
             })
-            configLoad = true
-            configCorrect = true
             appendMessage({
                 type: 'info-success',
                 value: 'Watching directory: ' + config.rootPath
             })
-            sftp = new NodeSSH();
-            sftp.connect(config.sftpOptions).then(() => {
-                appendMessage({
-                    type: 'info-success',
-                    value: 'Config load success: ' + config.rootPath
-                })
-                runWatcher();
-            }, (error)=> {
-                console.log("Something's wrong")
-                console.log(JSON.stringify(error))
+            configLoad = true
+            configCorrect = true
+            ping.promise.probe(config.sftpOptions.host, {timeout: 2}).then((result) => {
+                if (!result.alive) {
+                    appendMessage({
+                        type: 'error',
+                        value: 'Can\'t connect to server'
+                    })
+                } else {
+                    sftp = new NodeSSH();
+                    sftp.connect(config.sftpOptions).then(() => {
+                        appendMessage({
+                            type: 'info-success',
+                            value: 'Config load success: ' + config.rootPath
+                        })
+                        runWatcher();
+                    }, (error)=> {
+                        console.log("Something's wrong")
+                        console.log(JSON.stringify(error))
+                    })
+                }
             })
         }
     })
@@ -159,8 +169,7 @@ function activate(context) {
                 sftp,
                 onIgnore
             }
-            const syncFileCommand = utils.syncFile(uploadSyncData);
-            if (!sftp.isConnected()) {
+            if (!sftp || !sftp.isConnected()) {
                 appendMessage({
                     type: 'error',
                     value: 'Can\'t connect to server'
@@ -171,6 +180,7 @@ function activate(context) {
                 }
                 return
             }
+            const syncFileCommand = utils.syncFile(uploadSyncData);
             for (let file of allSelections) {
                 let filename = file.path
                 // Upload if it doesn't match the ignorePatterns
@@ -200,31 +210,43 @@ function activate(context) {
                     type: 'info-success',
                     value: 'Watching directory: ' + config.rootPath
                 })
-                sftp.connect(config.sftpOptions).then(() => {
+                ping.promise.probe(config.sftpOptions.host, {timeout: 2}).then((result) => {
+                    if (!result.alive) {
+                        appendMessage({
+                            type: 'error',
+                            value: 'Can\'t connect to server'
+                        })
+                    } else {
+                        if (!sftp) {
+                            sftp = new NodeSSH()
+                        }
+                        sftp.connect(config.sftpOptions).then(() => {
 
-                    watcherSyncData.rootPath = config.rootPath
-                    watcherSyncData.ignorePatterns = config.ignorePatterns
-                    watcherSyncData.remotePath = config.remotePath
-                    watcherSyncData.sftp = sftp
-                    uploadSyncData.rootPath = config.rootPath
-                    uploadSyncData.ignorePatterns = config.ignorePatterns
-                    uploadSyncData.remotePath = config.remotePath
-                    uploadSyncData.sftp = sftp
-                    reUploadSyncData.rootPath = config.rootPath
-                    reUploadSyncData.ignorePatterns = config.ignorePatterns
-                    reUploadSyncData.remotePath = config.remotePath
-                    reUploadSyncData.sftp = sftp
-                    if (!watcher) {
-                        runWatcher()
+                            watcherSyncData.rootPath = config.rootPath
+                            watcherSyncData.ignorePatterns = config.ignorePatterns
+                            watcherSyncData.remotePath = config.remotePath
+                            watcherSyncData.sftp = sftp
+                            uploadSyncData.rootPath = config.rootPath
+                            uploadSyncData.ignorePatterns = config.ignorePatterns
+                            uploadSyncData.remotePath = config.remotePath
+                            uploadSyncData.sftp = sftp
+                            reUploadSyncData.rootPath = config.rootPath
+                            reUploadSyncData.ignorePatterns = config.ignorePatterns
+                            reUploadSyncData.remotePath = config.remotePath
+                            reUploadSyncData.sftp = sftp
+                            if (!watcher) {
+                                runWatcher()
+                            }
+                            appendMessage({
+                                type: 'info-success',
+                                value: 'Config reload success: ' + config.rootPath
+                            })
+                        },
+                        (error)=> {
+                            console.log("Something's wrong")
+                            console.log(JSON.stringify(error))
+                        })
                     }
-                    appendMessage({
-                        type: 'info-success',
-                        value: 'Config reload success: ' + config.rootPath
-                    })
-                },
-                (error)=> {
-                    console.log("Something's wrong")
-                    console.log(JSON.stringify(error))
                 })
             }
         })
@@ -243,21 +265,33 @@ function activate(context) {
             })
         }
         if (configLoad && configCorrect) {
-            sftp.connect(config.sftpOptions).then(() => {
-                watcherSyncData.sftp = sftp
-                uploadSyncData.sftp = sftp
-                reUploadSyncData.sftp = sftp
-                if (!watcher) {
-                    runWatcher()
+            ping.promise.probe(config.sftpOptions.host, {timeout: 2}).then((result) => {
+                if (!result.alive) {
+                    appendMessage({
+                        type: 'error',
+                        value: 'Can\'t connect to server'
+                    })
+                } else {
+                    if (!sftp) {
+                        sftp = new NodeSSH()
+                    }
+                    sftp.connect(config.sftpOptions).then(() => {
+                        watcherSyncData.sftp = sftp
+                        uploadSyncData.sftp = sftp
+                        reUploadSyncData.sftp = sftp
+                        if (!watcher) {
+                            runWatcher()
+                        }
+                        appendMessage({
+                            type: 'info-success',
+                            value: 'Reconnect successful: ' + config.rootPath
+                        })
+                    },
+                    (error)=> {
+                        console.log("Something's wrong")
+                        console.log(JSON.stringify(error))
+                    })
                 }
-                appendMessage({
-                    type: 'info-success',
-                    value: 'Reconnect successful: ' + config.rootPath
-                })
-            },
-            (error)=> {
-                console.log("Something's wrong")
-                console.log(JSON.stringify(error))
             })
         }
     });
@@ -281,6 +315,13 @@ function activate(context) {
             })
         }
 
+        if (!sftp || !sftp.isConnected()) {
+            appendMessage({
+                type: 'error',
+                value: 'Can\'t connect to server'
+            })
+            return
+        }
         if (configLoad && configCorrect && uploadWithError.length) {
             let onIgnore = (filename) => {
                 const time = utils.timeString();
@@ -298,13 +339,6 @@ function activate(context) {
                 onIgnore
             }
             const syncFileCommand = utils.syncFile(reUploadSyncData);
-            if (!sftp.isConnected()) {
-                appendMessage({
-                    type: 'error',
-                    value: 'Can\'t connect to server'
-                })
-                return
-            }
             for (const filename of uploadWithError) {
                 syncFileCommand(filename)
             }

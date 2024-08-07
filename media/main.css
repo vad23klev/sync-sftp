@@ -5,6 +5,9 @@
     overflow: auto;
     gap: 8px;
 }
+.sync-sftp-message {
+    word-wrap: break-word;
+}
 .error {
     color: red;
 }
