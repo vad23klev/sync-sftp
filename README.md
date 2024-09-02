@@ -14,6 +14,9 @@ The extension works out of the box if working directory has file ```sftp-config.
     "password": "<SSH PASSOWORD>",
     "remote_path": "<Absolute remote path>",
     "ignore_regexes": [<Array with regexps to ignore upload>],
+    "useRsync": <true/false>,
+    "rsyncExclude": [<Array with exclude path for rsync>],
+
 }
 ```
 

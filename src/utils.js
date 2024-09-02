@@ -1,7 +1,7 @@
+"use strict";
+
 const vscode = require('vscode');
 const fs = require('fs');
-const path = require('path')
-const RJSON = require('relaxed-json');
 
 function getNonce() {
     let text = '';
@@ -11,7 +11,6 @@ function getNonce() {
     }
     return text;
 }
-
 
 function createWebviewHTML(webview, extensionUri) {
     const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'main.js'));
@@ -60,6 +59,22 @@ exports.createWebViewProvider = function(extensionUri) {
         },
     };
 }
+exports.updateStatusBarItem = function(myStatusBarItem, syncer) {
+    const isConnected = syncer.isConnected()
+    const icon = isConnected
+        ? '$(check)'
+        : '$(circle-slash)';
+    const color = isConnected
+    ? undefined
+    : new vscode.ThemeColor('errorForeground');
+    const hoverMessage = isConnected
+    ? 'SyncSFTP is connected'
+    : 'SyncSFTP is not connected';
+    myStatusBarItem.color = color;
+    myStatusBarItem.tooltip = hoverMessage;
+    myStatusBarItem.text = `${icon} SyncSFTP`;
+    myStatusBarItem.show();
+}
 const match = exports.match  = function (item, ignorePatterns) {
     let matches = false;
     for (const element of ignorePatterns) {
@@ -77,137 +92,40 @@ const timeString = exports.timeString = function () {
     const minutes = '0' + now.getMinutes();
     return '[' + now.getHours() + ':' + minutes.slice(-2) + ']: ';
 }
-
+/**
+ * @typedef syncFileData
+ * @param {Configurator} configurator
+ * @param {Messenger} messenger
+ * @param {Syncer} syncer
+ * @param {Function} onIgnore
+ */
+/**
+ *
+ * @param {syncFileData} data
+ * @returns
+ */
 exports.syncFile = function (data) {
     return async function(filename) {
-        if (!match(filename, data.ignorePatterns)) {
+        if (!match(filename, data.configurator.config.ignorePatterns)) {
             let time = timeString();
             console.log(filename);
-            data.appendMessage({
-                type: 'info',
-                value: time + ' Change detected: ' + filename.replace(data.rootPath, '')
-            })
-
+            data.messenger.info(time + ' Change detected: ' + filename.replace(data.configurator.config.rootPath, ''))
             let isDirectory = false;
             const exists = fs.existsSync('./' + filename);
-            let destination = data.remotePath + '/' + filename.replace(data.rootPath, '.');
+            let destination = data.configurator.config.remotePath + '/' + filename.replace(data.configurator.config.rootPath, '.');
             destination = destination.replace(/\\/g, '/');
             destination = destination.replace(/\/\/+/g, '/');
 
             if (exists) {
-                data.appendMessage({
-                    type: 'info',
-                    value: time + ' Uploading to -> ' + destination
-                })
-
                 isDirectory = fs.lstatSync('./' + filename).isDirectory();
-                if (isDirectory) {
-                    const failed = []
-                    const successful = []
-                    await data.sftp.putDirectory(
-                        './' + filename,
-                        destination,
-                        {
-                            recursive: true,
-                            concurrency: 5,
-                            validate: function(itemPath) {
-                                const baseName = path.basename(itemPath)
-                                return !match(baseName, data.ignorePatterns) // do not allow node_modules
-                            },
-                            tick: function(localPath, remotePath, error) {
-                                if (error) {
-                                    failed.push(remotePath)
-                                } else {
-                                    successful.push(remotePath)
-                                }
-                            }
-                        }
-                    )
-                    time = timeString();
-                    for (const success of successful) {
-                        data.appendMessage({
-                            type: 'info',
-                            value: time + ' Uploading to -> ' + success
-                        })
-                    }
-                    for (const fail of failed) {
-                        data.appendMessage({
-                            type: 'error',
-                            value: time + ' Uploading to -> ' + fail
-                        })
-                    }
-                    data.appendMessage({
-                        type: 'info-success',
-                        value: time + ' Succesfully uploaded ' + successful.length + ' file(s)'
-                    })
-                } else {
-                    await data.sftp.putFile('./' + filename, destination);
-                }
+                data.messenger.info(time + ' Uploading to -> ' + destination)
+                data.syncer.uploadFile(destination, filename, isDirectory)
             } else {
-                data.appendMessage({
-                    type: 'info',
-                    value: time + ' Delete detected on ' + filename + '. Deleting server file -> ' + destination
-                })
-                data.sftp.execCommand('rm ' + destination,{ cwd:'/var/www' });
-                data.sftp.execCommand('rm ' + destination + '/*',{ cwd:'/var/www' });
-                data.sftp.execCommand('rmdir ' + destination, { cwd:'/var/www' });
+                data.messenger.info(time + ' Delete detected on ' + filename + '. Deleting server file -> ' + destination)
+                data.syncer.deleteFile(destination)
             }
         } else {
             data.onIgnore(filename)
         }
-    }
-}
-
-exports.loadConfig = async function(rootPath) {
-    let configText = fs.readFileSync(rootPath + '/.sync-sftp.json')
-    let ignorePatterns = [];
-    let host = '';
-    let username = '';
-    let password = '';
-    let port = 22;
-    let remotePath = '';
-    let errors = []
-    let options = {}
-    try {
-        let options = Buffer.from(configText).toString('utf8')
-        const config = RJSON.parse(options);
-        host = config.host;
-        username = config.user;
-
-        ignorePatterns = config.ignore_regexes;
-        remotePath = config.remote_path;
-
-        // If port is set in config file (Like in Sublime) then use that, default is 22
-        if (config.port) {
-            port = config.port;
-        }
-
-        // If password is set in config file (Like in Sublime) then use that
-        if (config.password) {
-            password = config.password;
-        } else {
-            errors.push('Error: Unable to retrieve password from sftp-config.json or keychain!')
-        }
-    } catch (e) {
-        errors.push('Error: Unable to parse sftp-config.json!')
-    }
-
-    if (errors.length === 0) {
-        options = {
-            host: host, // required
-            username: username, // required
-            port: port,
-            autoConfirm: true,
-        };
-        if (password && password.length > 0) {
-            options['password'] = password;
-        }
-    }
-    return {
-        sftpOptions: options,
-        ignorePatterns,
-        remotePath,
-        errors,
-        rootPath
     }
 }

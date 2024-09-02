@@ -7,6 +7,7 @@ function appendMessage(message) {
     div.setAttribute("class", `sync-sftp-message ${message.type}`)
     div.append(message.value)
     document.querySelector('#root').append(div)
+    document.querySelector('.sync-sftp-message:last-of-type').scrollIntoView()
 }
 for(const message of sftpMessages) {
     appendMessage(message)

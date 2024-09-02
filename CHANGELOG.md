@@ -30,3 +30,9 @@
 
 - Add PING to check sftp server is alive, because NodeSSH have long timeout
 - Add break word to messages, for remove horizontal scroll
+
+## [0.3.90]
+
+- Add Rsync
+- Add "useRsync" config option
+- Add "rsyncExclude" config option
