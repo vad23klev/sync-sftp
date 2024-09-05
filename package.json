@@ -4,7 +4,7 @@
   "displayName": "Sync SFTP",
   "description": "Sync your project with remote using SFTP",
   "icon": "./icons/icon.png",
-  "version": "0.3.87",
+  "version": "0.4.0",
   "engines": {
     "vscode": "^1.91.0"
   },

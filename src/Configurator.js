@@ -24,6 +24,8 @@ class Configurator {
         let options = {}
         let rsync = false
         let rsyncExclude = []
+        let rsyncPath = 'rsync'
+        let sshPath = 'ssh'
         try {
             let options = Buffer.from(configText).toString('utf8')
             const config = RJSON.parse(options);
@@ -39,6 +41,12 @@ class Configurator {
             }
             if (config.rsyncExclude) {
                 rsyncExclude = config.rsyncExclude
+            }
+            if (config.rsyncPath) {
+                rsyncPath = config.rsyncPath
+            }
+            if (config.sshPath) {
+                sshPath = config.sshPath
             }
             // If password is set in config file (Like in Sublime) then use that
             if (config.password) {
@@ -73,7 +81,9 @@ class Configurator {
             errors,
             rootPath,
             useRsync: rsync,
-            rsyncExclude
+            rsyncExclude,
+            rsyncPath,
+            sshPath
         }
     }
 }

@@ -36,3 +36,9 @@
 - Add Rsync
 - Add "useRsync" config option
 - Add "rsyncExclude" config option
+
+## [0.4.0]
+
+- Add "rsyncPath" config option
+- Add "sshPath" config option
+- Add mkdir if destination not exists

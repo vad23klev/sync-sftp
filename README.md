@@ -11,11 +11,13 @@ The extension works out of the box if working directory has file ```sftp-config.
 {
     "host": "<Host IP>",
     "user": "<SSH user>",
-    "password": "<SSH PASSOWORD>",
+    "password": "<SSH PASSWORD>",
     "remote_path": "<Absolute remote path>",
     "ignore_regexes": [<Array with regexps to ignore upload>],
     "useRsync": <true/false>,
     "rsyncExclude": [<Array with exclude path for rsync>],
+    "rsyncPath": "<Rsync path>",
+    "sshPath": "<SSH path>",
 
 }
 ```

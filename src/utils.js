@@ -108,7 +108,6 @@ exports.syncFile = function (data) {
     return async function(filename) {
         if (!match(filename, data.configurator.config.ignorePatterns)) {
             let time = timeString();
-            console.log(filename);
             data.messenger.info(time + ' Change detected: ' + filename.replace(data.configurator.config.rootPath, ''))
             let isDirectory = false;
             const exists = fs.existsSync('./' + filename);

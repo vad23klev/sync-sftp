@@ -35,12 +35,11 @@ class Syncer {
         this.configurator = configurator
         this.messenger = messenger
         this.timeInterval = setInterval( async () => {
-            console.log(this.configurator.isCorrect() && this.isConnected() && this.uploadFileFailed.length);
             if (this.configurator.isCorrect() && this.isConnected() && this.uploadFileFailed.length) {
                 let outputArray = JSON.parse(JSON.stringify(this.uploadFileFailed))
                 this.uploadFileFailed = [];
-                for (let index = 0; index < outputArray.length; index++) {
-                    const element = outputArray[index];
+
+                for (let element of outputArray) {
                     await this.uploadFile(element.destination,element.filename, element.isDirectory)
                 }
             }
@@ -58,17 +57,17 @@ class Syncer {
                 this.sftp.connect(this.configurator.config.sftpOptions).then(() => {
                     this.messenger.infoSuccess('Config load success: ' + this.configurator.config.rootPath)
                 }, (error)=> {
-                    console.log("Something's wrong")
-                    console.log(JSON.stringify(error))
+                    console.warn("SFTP:" +  JSON.stringify(error))
                 })
                 if (this.configurator.config.useRsync) {
-                    this.rsync = new Rsync()
+                    this.rsync = new Rsync(this.configurator.config.rsyncPath)
 
-                    this.rsync.exclude(this.configurator.rsyncExclude.length ? this.configurator.rsyncExclude: this.configurator.config.ignorePatterns);
-                    this.rsync.shell('ssh').setFlags('zarv')
+                    this.rsync.exclude(this.configurator.config.rsyncExclude.length ? this.configurator.config.rsyncExclude: this.configurator.config.ignorePatterns);
+                    this.rsync.shell(`${this.configurator.config.sshPath} -p 22`).setFlags('zarv')
                 }
             }
-        }).catch(() => {
+        }).catch((e) => {
+            console.warn("SFTP:" +  JSON.stringify(e))
             this.messenger.error('Can\'t connect to server')
         })
     }
@@ -78,7 +77,7 @@ class Syncer {
             this.messenger.error('Config not load')
             return Promise.reject()
         }
-        return ping.promise.probe(this.configurator.config.sftpOptions.host, {timeout: 3})
+        return ping.promise.probe(this.configurator.config.sftpOptions.host, {timeout: 5})
     }
     isConnected() {
         if (!this.configurator.isCorrect()) {
@@ -119,6 +118,7 @@ class Syncer {
             this.messenger.infoSuccess(time + ' Succesfully uploaded ' + successful.length + ' file(s)')
         } else {
             await this.sftp.putFile('./' + filename, destination);
+            this.messenger.infoSuccess(time + ' Succesfully uploaded ' + filename)
         }
     }
     async uploadFileRsync(destination, filename, isDirectory) {
@@ -128,11 +128,17 @@ class Syncer {
         this.rsync._sources = [];
         this.rsync._sources.push(filename)
         this.rsync._destination = destinationFirstPart + destinationLastPart
-        console.log(destinationFirstPart + destinationLastPart);
         await this.rsync.execute().then((exitCode) => {
             this.messenger.infoSuccess(time + ' Succesfully uploaded ' + filename)
         }).catch((error) => {
-            console.log(JSON.stringify(error))
+
+            console.warn("SFTP:" +  JSON.stringify(error))
+            if (error.code == 12) {
+                let parent = destination
+                parent = parent.replace(/[^/]+$/, '')
+                parent = parent.replace('./', '')
+                this.sftp.execCommand('mkdir -p ' + parent,{ cwd:'/var/www' });
+            }
             this.messenger.error(time + 'Error with Uploading to -> ' + destination)
             this.uploadFileFailed.push({destination, filename, isDirectory})
         });
