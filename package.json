@@ -4,7 +4,7 @@
   "displayName": "Sync SFTP",
   "description": "Sync your project with remote using SFTP",
   "icon": "./icons/icon.png",
-  "version": "0.4.0",
+  "version": "0.4.33",
   "engines": {
     "vscode": "^1.91.0"
   },
@@ -21,27 +21,33 @@
   "contributes": {
     "commands": [
       {
-        "command": "sync-sftp.reloadConfig",
+        "command": "sync-sftp.detectDifferences",
         "category": "Sync SFTP",
-        "title": "Sync SFTP: Reload Configuration",
-        "icon": "$(debug-restart)"
+        "title": "Detect differences",
+        "icon": "$(info)"
+      },
+      {
+        "command": "sync-sftp.makeEqual",
+        "category": "Sync SFTP",
+        "title": "Make equal",
+        "icon": "$(remote)"
       },
       {
         "command": "sync-sftp.reconnect",
         "category": "Sync SFTP",
-        "title": "Sync SFTP: Reconnect",
+        "title": "Reconnect",
         "icon": "$(debug-disconnect)"
       },
       {
         "command": "sync-sftp.reupload",
         "category": "Sync SFTP",
-        "title": "Sync SFTP: Reupload",
+        "title": "Reupload",
         "icon": "$(cloud-upload)"
       },
       {
         "command": "sync-sftp.clearLog",
         "category": "Sync SFTP",
-        "title": "Sync SFTP: Clear",
+        "title": "Clear",
         "icon": "$(clear-all)"
       },
       {
@@ -61,17 +67,17 @@
     "menus": {
       "view/title": [
         {
-          "command": "sync-sftp.reupload",
+          "command": "sync-sftp.detectDifferences",
           "group": "navigation@0",
           "when": "view == sync-sftp.logView"
         },
         {
-          "command": "sync-sftp.reconnect",
+          "command": "sync-sftp.makeEqual",
           "group": "navigation@1",
           "when": "view == sync-sftp.logView"
         },
         {
-          "command": "sync-sftp.reloadConfig",
+          "command": "sync-sftp.reupload",
           "group": "navigation@2",
           "when": "view == sync-sftp.logView"
         },

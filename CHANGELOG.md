@@ -42,3 +42,10 @@
 - Add "rsyncPath" config option
 - Add "sshPath" config option
 - Add mkdir if destination not exists
+
+## [0.4.34]
+
+- Move command Reconnect to StatusBarItem
+- Add "detectDifferences" command to show differences between local and remote files
+- Add "makeEqual" command to make remote files equal to local files
+- change condition order in timeInterval to make less connection checks

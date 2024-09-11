@@ -18,7 +18,7 @@ function activate(context) {
     console.log('Congratulations, your extension "sync-sftp" is now active!');
 
     let myStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-
+    myStatusBarItem.command = 'sync-sftp.reconnect'
     let uploadSyncData = {}
     let reUploadSyncData = {}
     let watcherSyncData = {}
@@ -117,6 +117,7 @@ function activate(context) {
         }
     });
     const reconnect = vscode.commands.registerCommand('sync-sftp.reconnect', function () {
+        console.log('connect');
         syncer.connect()
     });
     const reUpload = vscode.commands.registerCommand('sync-sftp.reupload', function () {
@@ -146,11 +147,34 @@ function activate(context) {
         }
     });
 
+    const makeEqual = vscode.commands.registerCommand('sync-sftp.makeEqual', function () {
+
+        if (!syncer.isConnected()) {
+            messenger.error('Can\'t connect to server')
+            return
+        }
+        if (configurator.isConfigLoaded && configurator.isConfigCorrect) {
+            syncer.makeEqual()
+        }
+    });
+
+    const detectDifferences = vscode.commands.registerCommand('sync-sftp.detectDifferences', function () {
+        if (!syncer.isConnected()) {
+            messenger.error('Can\'t connect to server')
+            return
+        }
+        if (configurator.isConfigLoaded && configurator.isConfigCorrect) {
+            syncer.notifyAboutChanges()
+        }
+    });
+
     context.subscriptions.push(clear);
     context.subscriptions.push(reload);
     context.subscriptions.push(reconnect);
     context.subscriptions.push(upload);
     context.subscriptions.push(reUpload);
+    context.subscriptions.push(makeEqual);
+    context.subscriptions.push(detectDifferences);
     context.subscriptions.push(myStatusBarItem);
 }
 
