@@ -18,12 +18,12 @@ function activate(context) {
     console.log('Congratulations, your extension "sync-sftp" is now active!');
 
     let myStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-    myStatusBarItem.command = 'sync-sftp.reconnect'
     let uploadSyncData = {}
     let reUploadSyncData = {}
     let watcherSyncData = {}
     let messenger = new Messenger();
     let configurator = new Configurator();
+    myStatusBarItem.command = 'sync-sftp.reconnect';
     syncer = new Syncer(configurator, messenger);
     function runWatcher() {
         let onIgnore = () => {}

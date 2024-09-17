@@ -4,7 +4,7 @@
   "displayName": "Sync SFTP",
   "description": "Sync your project with remote using SFTP",
   "icon": "./icons/icon.png",
-  "version": "0.4.33",
+  "version": "0.4.55",
   "engines": {
     "vscode": "^1.91.0"
   },
@@ -20,6 +20,12 @@
   "main": "./src/extension.js",
   "contributes": {
     "commands": [
+      {
+        "command": "sync-sftp.reloadConfig",
+        "category": "Sync SFTP",
+        "title": "Reload Configuration",
+        "icon": "$(debug-restart)"
+      },
       {
         "command": "sync-sftp.detectDifferences",
         "category": "Sync SFTP",

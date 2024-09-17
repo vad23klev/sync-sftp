@@ -127,8 +127,8 @@ class Syncer {
         let destinationFirstPart = this.configurator.config.sftpOptions.username + '@' + this.configurator.config.sftpOptions.host + ':';
         let destinationLastPart = (isDirectory ? destination.replace(/\/[^/]+$/, '') : destination );
         this.rsync._sources = [];
-        this.rsync._sources.push(filename)
-        this.rsync._destination = destinationFirstPart + destinationLastPart
+        this.rsync._sources.push(`"${filename}"`)
+        this.rsync._destination = `"${destinationFirstPart + destinationLastPart}"`
         await this.rsync.execute().then((exitCode) => {
             this.messenger.infoSuccess(time + ' Succesfully uploaded ' + filename)
         }).catch((error) => {
@@ -186,8 +186,8 @@ class Syncer {
             return rsync.execute().then(exitCode => {
                 let lines = text.split(/\n/)
                 lines = lines.filter(item => !item.match(/^<f.\..+/))
-                let toUpload = lines.filter(item => item.match(/^<.+/)).map(item => item.replace(/^.+ /, ''))
-                let toDelete = lines.filter(item => item.match(/\*deleting.+/)).map(item => item.replace(/^.+ /, ''))
+                let toUpload = lines.filter(item => item.match(/^<.+/)).map(item => item.replace(/^[^ ]+ /, ''))
+                let toDelete = lines.filter(item => item.match(/\*deleting.+/)).map(item => item.replace(/^[^ ]+ /, ''))
                 return {toUpload, toDelete}
             }).catch((error) => {
                 console.warn("SyncSFTP:" +  JSON.stringify(error))
@@ -209,19 +209,17 @@ class Syncer {
             this.messenger.error('Can\'t connect to server')
             return false
         }
-        try {
-            this.detectChanges().then(({toUpload, toDelete}) => {
-                for (let item of toUpload) {
-                    this.messenger.info('Need to upload -> ' + item)
-                }
-                for (let item of toDelete) {
-                    this.messenger.info('Need to delete -> ' + item)
-                }
-                this.messenger.infoSuccess('Total different size: ' + (toUpload.length + toDelete.length))
-            })
-        } catch (error) {
+        this.detectChanges().then(({toUpload, toDelete}) => {
+            for (let item of toUpload) {
+                this.messenger.info('Need to upload -> ' + item)
+            }
+            for (let item of toDelete) {
+                this.messenger.info('Need to delete -> ' + item)
+            }
+            this.messenger.infoSuccess('Total different size: ' + (toUpload.length + toDelete.length))
+        }).catch((error) => {
             console.warn("SyncSFTP:" +  JSON.stringify(error))
-        }
+        })
     }
     async makeEqual() {
         if (!this.configurator.isCorrect()) {
@@ -236,25 +234,23 @@ class Syncer {
             this.messenger.error('Can\'t connect to server')
             return false
         }
-        try {
-            this.detectChanges().then(({toUpload, toDelete}) => {
-                for (let item of toUpload) {
-                    let destination = this.configurator.config.remotePath + '/' + item;
-                    destination = destination.replace(/\\/g, '/');
-                    destination = destination.replace(/\/\/+/g, '/');
-                    let time = timeString();
-                    let isDirectory = false;
-                    this.messenger.info(time + ' Uploading to -> ' + destination)
-                    this.uploadFile(destination, this.configurator.config.rootPath + '/' + item, isDirectory)
-                }
-                for (let item of toDelete) {
-                    this.deleteFile(this.configurator.config.remotePath + '/' + item)
-                    this.messenger.infoSuccess('Deleted: ' + item)
-                }
-            })
-        } catch (error) {
+        this.detectChanges().then(({toUpload, toDelete}) => {
+            for (let item of toUpload) {
+                let destination = this.configurator.config.remotePath + '/' + item;
+                destination = destination.replace(/\\/g, '/');
+                destination = destination.replace(/\/\/+/g, '/');
+                let time = timeString();
+                let isDirectory = false;
+                this.messenger.info(time + ' Uploading to -> ' + destination)
+                this.uploadFile(destination, this.configurator.config.rootPath + '/' + item, isDirectory)
+            }
+            for (let item of toDelete) {
+                this.deleteFile(this.configurator.config.remotePath + '/' + item)
+                this.messenger.infoSuccess('Deleted: ' + item)
+            }
+        }).catch((error) => {
             console.warn("SyncSFTP:" +  JSON.stringify(error))
-        }
+        })
     }
 }
 
