@@ -57,3 +57,12 @@
 ## [0.4.55]
 
 - Fix path with spaces
+
+## [0.5.30]
+
+- Move log to separate ActivityBar panel
+- Move items to submenu from title
+- Add pause button
+- Add clear upload query button
+- Add message counter in status bar
+- Make some refactoring

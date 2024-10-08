@@ -4,7 +4,8 @@
   "displayName": "Sync SFTP",
   "description": "Sync your project with remote using SFTP",
   "icon": "./icons/icon.png",
-  "version": "0.4.55",
+  "version": "0.5.30",
+  "preview": true,
   "engines": {
     "vscode": "^1.91.0"
   },
@@ -19,6 +20,26 @@
   ],
   "main": "./src/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+          {
+              "id": "sync-sftp-view",
+              "title": "Sync SFTP",
+              "icon": "icons/menu-icon.svg"
+          }
+      ]
+    },
+    "views": {
+      "sync-sftp-view": [
+        {
+          "type": "webview",
+          "id": "sync-sftp.logView",
+          "name": "Sync SFTP",
+					"icon": "icons/menu-icon.svg",
+					"contextualTitle": "Sync SFTP"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "sync-sftp.reloadConfig",
@@ -57,41 +78,61 @@
         "icon": "$(clear-all)"
       },
       {
+        "command": "sync-sftp.clearQuery",
+        "category": "Sync SFTP",
+        "title": "Clear Query",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "sync-sftp.toggleWatcher",
+        "category": "Sync SFTP",
+        "title": "Toggle watcher",
+        "icon": "$(coffee)"
+      },
+      {
         "command": "sync-sftp.upload",
         "title": "Sync SFTP: Upload file"
       }
     ],
-    "views": {
-      "explorer": [
-        {
-          "type": "webview",
-          "id": "sync-sftp.logView",
-          "name": "Sync SFTP"
-        }
-      ]
-    },
+    "submenus": [
+      {
+        "id": "sync-sftp.submenu",
+        "label": "Sync SFTP"
+      }
+    ],
     "menus": {
       "view/title": [
         {
-          "command": "sync-sftp.detectDifferences",
+          "command": "sync-sftp.clearQuery",
           "group": "navigation@0",
           "when": "view == sync-sftp.logView"
         },
         {
-          "command": "sync-sftp.makeEqual",
+          "command": "sync-sftp.toggleWatcher",
           "group": "navigation@1",
           "when": "view == sync-sftp.logView"
         },
         {
+          "command": "sync-sftp.detectDifferences",
+          "group": "sync-sftp.submenu@0",
+          "when": "view == sync-sftp.logView"
+        },
+        {
+          "command": "sync-sftp.makeEqual",
+          "group": "sync-sftp.submenu@1",
+          "when": "view == sync-sftp.logView"
+        },
+        {
           "command": "sync-sftp.reupload",
-          "group": "navigation@2",
+          "group": "sync-sftp.submenu@2",
           "when": "view == sync-sftp.logView"
         },
         {
           "command": "sync-sftp.clearLog",
-          "group": "navigation@3",
+          "group": "sync-sftp.submenu@3",
           "when": "view == sync-sftp.logView"
         }
+
       ],
       "explorer/context": [
         {

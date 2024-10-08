@@ -27,6 +27,7 @@ class Syncer {
     messenger = null;
 
     uploadFileFailed = [];
+    isPaused = false
 
     sftp = new NodeSSH();
     rsync = new Rsync();
@@ -36,6 +37,8 @@ class Syncer {
         this.configurator = configurator
         this.messenger = messenger
         this.timeInterval = setInterval( async () => {
+            if (this.isPaused) return
+
             if (this.uploadFileFailed.length && this.configurator.isCorrect() && this.isConnected()) {
                 let outputArray = JSON.parse(JSON.stringify(this.uploadFileFailed))
                 this.uploadFileFailed = [];
@@ -47,6 +50,7 @@ class Syncer {
         }, 2000)
     }
     connect() {
+        if (this.isPaused) return false
         if (!this.configurator.isCorrect()) {
             this.messenger.error('Config not load')
             return false
@@ -74,6 +78,7 @@ class Syncer {
     }
 
     checkConnection() {
+        if (this.isPaused) return Promise.reject()
         if (!this.configurator.isCorrect()) {
             this.messenger.error('Config not load')
             return Promise.reject()
@@ -81,6 +86,7 @@ class Syncer {
         return ping.promise.probe(this.configurator.config.sftpOptions.host, {timeout: 5})
     }
     isConnected() {
+        if (this.isPaused) return false
         if (!this.configurator.isCorrect()) {
             return false
         }
@@ -134,7 +140,7 @@ class Syncer {
         }).catch((error) => {
 
             console.warn("SyncSFTP:" +  JSON.stringify(error))
-            if (error.code == 12) {
+            if (error.code == 12 || error.code == 3) {
                 let parent = destination
                 parent = parent.replace(/[^/]+$/, '')
                 parent = parent.replace('./', '')
@@ -145,6 +151,7 @@ class Syncer {
         });
     }
     async uploadFile(destination, filename, isDirectory) {
+        if (this.isPaused) return false
         if (!this.configurator.isCorrect()) {
             this.uploadFileFailed.push({destination, filename, isDirectory})
             this.messenger.error('Can\'t connect to server')
@@ -156,12 +163,24 @@ class Syncer {
         }
         return false
     }
-    deleteFile(destination) {
-        this.sftp.execCommand('rm ' + destination,{ cwd:'/var/www' });
-        this.sftp.execCommand('rm ' + destination + '/*',{ cwd:'/var/www' });
-        this.sftp.execCommand('rmdir ' + destination, { cwd:'/var/www' });
+    deleteFile(path) {
+        if (this.isPaused) return false
+        this.sftp.execCommand(`rm -rf "${path}"`,{ cwd:'/var/www' });
+    }
+    deleteFileList(list) {
+        if (this.isPaused) return false
+        let commandList = []
+        for (let item of list) {
+            let path = this.configurator.config.remotePath + '/' + item
+            commandList.push(`rm -rf "${path}"`)
+        }
+        if (commandList.length) {
+            console.log(commandList.join(' && ').replace(/\/\/+/g,'/'));
+            this.sftp.execCommand(commandList.join(' && ').replace(/\/\/+/g,'/'),{ cwd:'/var/www' });
+        }
     }
     async detectChanges() {
+        if (this.isPaused) return false
         let text = ''
         let rsync = new Rsync({executable: this.configurator.config.rsyncPath})
         rsync.exclude(this.configurator.config.rsyncExclude.length ? this.configurator.config.rsyncExclude: this.configurator.config.ignorePatterns);
@@ -185,9 +204,9 @@ class Syncer {
         try {
             return rsync.execute().then(exitCode => {
                 let lines = text.split(/\n/)
-                lines = lines.filter(item => !item.match(/^<f.\..+/))
-                let toUpload = lines.filter(item => item.match(/^<.+/)).map(item => item.replace(/^[^ ]+ /, ''))
-                let toDelete = lines.filter(item => item.match(/\*deleting.+/)).map(item => item.replace(/^[^ ]+ /, ''))
+                lines = lines.filter(item => !RegExp(/^<f.\..+/).exec(item))
+                let toUpload = lines.filter(item => RegExp(/^<.+/).exec(item)).map(item => item.replace(/^[^ ]+ +/, ''))
+                let toDelete = lines.filter(item => RegExp(/\*deleting.+/).exec(item)).map(item => item.replace(/^[^ ]+ +/, ''))
                 return {toUpload, toDelete}
             }).catch((error) => {
                 console.warn("SyncSFTP:" +  JSON.stringify(error))
@@ -197,31 +216,43 @@ class Syncer {
         }
     }
     async notifyAboutChanges() {
-        if (!this.configurator.isCorrect()) {
-            this.messenger.error('Config not load')
-            return false
+        if (this.commonChecks()) {
+            this.detectChanges().then(({toUpload, toDelete}) => {
+                for (let item of toUpload) {
+                    this.messenger.info('Need to upload -> ' + item)
+                }
+                for (let item of toDelete) {
+                    this.messenger.info('Need to delete -> ' + item)
+                }
+                this.messenger.infoSuccess('Total different size: ' + (toUpload.length + toDelete.length))
+            }).catch((error) => {
+                console.warn("SyncSFTP:" +  JSON.stringify(error))
+            })
         }
-        if (!this.configurator.config.useRsync) {
-            this.messenger.error('For RSYNC Users only!')
-            return false
-        }
-        if (!this.isConnected()) {
-            this.messenger.error('Can\'t connect to server')
-            return false
-        }
-        this.detectChanges().then(({toUpload, toDelete}) => {
-            for (let item of toUpload) {
-                this.messenger.info('Need to upload -> ' + item)
-            }
-            for (let item of toDelete) {
-                this.messenger.info('Need to delete -> ' + item)
-            }
-            this.messenger.infoSuccess('Total different size: ' + (toUpload.length + toDelete.length))
-        }).catch((error) => {
-            console.warn("SyncSFTP:" +  JSON.stringify(error))
-        })
     }
     async makeEqual() {
+        if (this.commonChecks()) {
+            this.detectChanges().then(({toUpload, toDelete}) => {
+                for (let item of toUpload) {
+                    let destination = this.configurator.config.remotePath + '/' + item;
+                    destination = destination.replace(/\\/g, '/');
+                    destination = destination.replace(/\/\/+/g, '/');
+                    let time = timeString();
+                    let isDirectory = false;
+                    this.messenger.info(time + ' Uploading to -> ' + destination)
+                    this.uploadFile(destination, this.configurator.config.rootPath + '/' + item, isDirectory)
+                }
+                this.deleteFileList(toDelete)
+                for (let item of toDelete) {
+                    this.messenger.infoSuccess('Deleted: ' + item)
+                }
+            }).catch((error) => {
+                console.warn("SyncSFTP:" +  JSON.stringify(error))
+            })
+        }
+    }
+    commonChecks() {
+        if (this.isPaused) return false
         if (!this.configurator.isCorrect()) {
             this.messenger.error('Config not load')
             return false
@@ -234,23 +265,10 @@ class Syncer {
             this.messenger.error('Can\'t connect to server')
             return false
         }
-        this.detectChanges().then(({toUpload, toDelete}) => {
-            for (let item of toUpload) {
-                let destination = this.configurator.config.remotePath + '/' + item;
-                destination = destination.replace(/\\/g, '/');
-                destination = destination.replace(/\/\/+/g, '/');
-                let time = timeString();
-                let isDirectory = false;
-                this.messenger.info(time + ' Uploading to -> ' + destination)
-                this.uploadFile(destination, this.configurator.config.rootPath + '/' + item, isDirectory)
-            }
-            for (let item of toDelete) {
-                this.deleteFile(this.configurator.config.remotePath + '/' + item)
-                this.messenger.infoSuccess('Deleted: ' + item)
-            }
-        }).catch((error) => {
-            console.warn("SyncSFTP:" +  JSON.stringify(error))
-        })
+        return true
+    }
+    toggle() {
+        this.isPaused = !this.isPaused
     }
 }
 

@@ -45,9 +45,17 @@ exports.createWebViewProvider = function(extensionUri) {
             this.thisWebview = thisWebview
             thisWebview.webview.options={enableScripts:true, retainContextWhenHidden: true, localResourceRoots: [this.extensionUri]}
             thisWebview.webview.html= createWebviewHTML(thisWebview.webview, this.extensionUri);
+            this.thisWebview.onDidChangeVisibility((event) => {
+                if (this?.thisWebview?.webview && this?.thisWebview?.visible) {
+                    for(let messageElement of this.messages) {
+                        this.thisWebview.webview.postMessage(messageElement);
+                    }
+                    this.messages = [];
+                }
+            })
         },
         postMessageToWebview: function(message) {
-            if (this.thisWebview && this.thisWebview.webview) {
+            if (this?.thisWebview?.webview && this?.thisWebview?.visible) {
                 for(let messageElement of this.messages) {
                     this.thisWebview.webview.postMessage(messageElement);
                 }
@@ -59,20 +67,21 @@ exports.createWebViewProvider = function(extensionUri) {
         },
     };
 }
-exports.updateStatusBarItem = function(myStatusBarItem, syncer) {
+exports.updateStatusBarItem = function(myStatusBarItem, syncer, webviewProvider) {
     const isConnected = syncer.isConnected()
-    const icon = isConnected
+    let icon = isConnected
         ? '$(check)'
         : '$(circle-slash)';
-    const color = isConnected
-    ? undefined
-    : new vscode.ThemeColor('errorForeground');
-    const hoverMessage = isConnected
+    icon = syncer.isPaused ? '$(debug-pause)' : icon
+    const color = !isConnected || syncer.isPaused
+    ? new vscode.ThemeColor('errorForeground') : undefined;
+    let hoverMessage = isConnected
     ? 'SyncSFTP is connected'
     : 'SyncSFTP is not connected';
+    hoverMessage = syncer.isPaused ? 'SyncSFTP is paused' : hoverMessage
     myStatusBarItem.color = color;
     myStatusBarItem.tooltip = hoverMessage;
-    myStatusBarItem.text = `${icon} SyncSFTP`;
+    myStatusBarItem.text = `${icon} SyncSFTP($(info) ${webviewProvider.messages.length} messages)`;
     myStatusBarItem.show();
 }
 const match = exports.match  = function (item, ignorePatterns) {
