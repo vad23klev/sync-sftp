@@ -22,7 +22,7 @@ class Configurator {
         let remotePath = '';
         let errors = []
         let options = {}
-        let rsync = false
+        let useRsync = false
         let rsyncExclude = []
         let rsyncPath = 'rsync'
         let sshPath = 'ssh'
@@ -55,7 +55,7 @@ class Configurator {
                 errors.push('Error: Unable to retrieve password from sftp-config.json or keychain!')
             }
             if (config.useRsync) {
-                rsync = config.useRsync
+                useRsync = config.useRsync
             }
         } catch (e) {
             errors.push('Error: Unable to parse sftp-config.json!')
@@ -80,7 +80,7 @@ class Configurator {
             remotePath,
             errors,
             rootPath,
-            useRsync: rsync,
+            useRsync,
             rsyncExclude,
             rsyncPath,
             sshPath

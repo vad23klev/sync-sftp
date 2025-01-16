@@ -27,27 +27,69 @@ class Syncer {
     messenger = null;
 
     uploadFileFailed = [];
+    uploadFilePending = [];
+    deleteFilePending = [];
     isPaused = false
 
     sftp = new NodeSSH();
     rsync = new Rsync();
-    timeInterval = 0
+    rsyncList = new Rsync();
+
+    timeInterval = 0;
+    deleteFileInterval = 0;
+    uploadFileInterval = 0;
 
     constructor(configurator, messenger) {
         this.configurator = configurator
         this.messenger = messenger
-        this.timeInterval = setInterval( async () => {
-            if (this.isPaused) return
-
-            if (this.uploadFileFailed.length && this.configurator.isCorrect() && this.isConnected()) {
-                let outputArray = JSON.parse(JSON.stringify(this.uploadFileFailed))
-                this.uploadFileFailed = [];
-
-                for (let element of outputArray) {
-                    await this.uploadFile(element.destination,element.filename, element.isDirectory)
-                }
+    }
+    startTimers() {
+        if (this.configurator.isCorrect()) {
+            if (this.timeInterval) {
+                clearInterval(syncer.timeInterval)
             }
-        }, 2000)
+            if (this.deleteFileInterval) {
+                clearInterval(syncer.deleteFileInterval)
+            }
+            if (this.uploadFileInterval) {
+                clearInterval(syncer.uploadFileInterval)
+            }
+            if (this.configurator.config.useRsync) {
+                this.uploadFileInterval = setInterval( async () => {
+                    if (this.isPaused) return
+                    console.log("SyncSFTP: uploadFilePending", this.uploadFilePending);
+                    if (this.uploadFilePending.length && this.configurator.isCorrect() && this.isConnected()) {
+                        let outputArray = JSON.parse(JSON.stringify(this.uploadFilePending)).map(item => item.replace(`${this.configurator.config.rootPath}`, '.'))
+                        this.uploadFilePending = [];
+                        this.uploadListRSync(outputArray)
+                    }
+                }, 2000)
+
+                this.deleteFileInterval = setInterval( async () => {
+                    if (this.isPaused) return
+
+                    console.log("SyncSFTP: deleteFilePending", this.deleteFilePending);
+                    if (this.deleteFilePending.length && this.configurator.isCorrect() && this.isConnected()) {
+                        let outputArray = JSON.parse(JSON.stringify(this.deleteFilePending))
+                        this.deleteFilePending = [];
+                        this.deleteFileListPedding(outputArray)
+                    }
+                }, 2000)
+            } else {
+                this.timeInterval = setInterval( async () => {
+                    if (this.isPaused) return
+
+                    if (this.uploadFileFailed.length && this.configurator.isCorrect() && this.isConnected()) {
+                        let outputArray = JSON.parse(JSON.stringify(this.uploadFileFailed))
+                        this.uploadFileFailed = [];
+
+                        for (let element of outputArray) {
+                            await this.uploadFile(element.destination,element.filename, element.isDirectory)
+                        }
+                    }
+                }, 2000)
+            }
+        }
     }
     connect() {
         if (this.isPaused) return false
@@ -69,6 +111,16 @@ class Syncer {
 
                     this.rsync.exclude(this.configurator.config.rsyncExclude.length ? this.configurator.config.rsyncExclude: this.configurator.config.ignorePatterns);
                     this.rsync.shell(`${this.configurator.config.sshPath} -p 22`).setFlags('zarv')
+                    this.rsyncList = new Rsync({executable: this.configurator.config.rsyncPath})
+
+                    this.rsyncList.exclude(this.configurator.config.rsyncExclude.length ? this.configurator.config.rsyncExclude: this.configurator.config.ignorePatterns);
+                    this.rsyncList.shell(`${this.configurator.config.sshPath} -p 22`).setFlags('zarv')
+                    let destinationFirstPart = this.configurator.config.sftpOptions.username + '@' + this.configurator.config.sftpOptions.host + ':';
+                    let destinationLastPart = this.configurator.config.remotePath;
+                    this.rsyncList._sources = [];
+                    this.rsyncList._sources.push(`${this.configurator.config.rootPath}`)
+                    this.rsyncList._destination = `"${destinationFirstPart + destinationLastPart}"`
+                    this.rsyncList.set('files-from', `${this.configurator.config.rootPath}/.vscode/.file-list`)
                 }
             }
         }).catch((e) => {
@@ -128,6 +180,22 @@ class Syncer {
             this.messenger.infoSuccess(time + ' Succesfully uploaded ' + filename)
         }
     }
+    async uploadListRSync (list) {
+        let time = timeString();
+        let text = list.join('\n');
+        fs.writeFileSync(`${this.configurator.config.rootPath}/.vscode/.file-list`, text, 'utf8');
+        console.log("SyncSFTP:" + this.rsyncList.command());
+        await this.rsyncList.execute().then((exitCode) => {
+            this.messenger.infoSuccess(time + ' Succesfully uploaded ' + list.join('<br>'))
+        }).catch((error) => {
+            if (JSON.stringify(error) === '{}') {
+                this.messenger.infoSuccess(time + ' Succesfully uploaded ' + list.join('<br>'))
+            } else {
+                console.warn("SyncSFTP:" +  JSON.stringify(error))
+            }
+        });
+
+    }
     async uploadFileRsync(destination, filename, isDirectory) {
         let time = timeString();
         let destinationFirstPart = this.configurator.config.sftpOptions.username + '@' + this.configurator.config.sftpOptions.host + ':';
@@ -159,13 +227,17 @@ class Syncer {
         if (!this.configurator.config.useRsync) {
             await this.uploadFileSSH(destination, filename, isDirectory);
         } else {
-            await this.uploadFileRsync(destination, filename, isDirectory);
+            this.uploadFilePending.push(filename)
         }
         return false
     }
     deleteFile(path) {
         if (this.isPaused) return false
-        this.sftp.execCommand(`rm -rf "${path}"`,{ cwd:'/var/www' });
+        if (!this.configurator.config.useRsync) {
+            this.sftp.execCommand(`rm -rf "${path}"`,{ cwd:'/var/www' });
+        } else {
+            this.deleteFilePending.push(path)
+        }
     }
     deleteFileList(list) {
         if (this.isPaused) return false
@@ -177,6 +249,20 @@ class Syncer {
         if (commandList.length) {
             console.log(commandList.join(' && ').replace(/\/\/+/g,'/'));
             this.sftp.execCommand(commandList.join(' && ').replace(/\/\/+/g,'/'),{ cwd:'/var/www' });
+        }
+    }
+
+    deleteFileListPedding(list) {
+        if (this.isPaused) return false
+        let commandList = []
+        for (let item of list) {
+            let path = item
+            commandList.push(`rm -rf "${path}"`)
+        }
+        if (commandList.length) {
+            console.log(commandList.join(' && ').replace(/\/\/+/g,'/'));
+            this.sftp.execCommand(commandList.join(' && ').replace(/\/\/+/g,'/'),{ cwd:'/var/www' });
+            this.messenger.infoSuccess(time + ' Succesfully deleted ' + list.join('<br>'))
         }
     }
     async detectChanges() {
@@ -233,15 +319,8 @@ class Syncer {
     async makeEqual() {
         if (this.commonChecks()) {
             this.detectChanges().then(({toUpload, toDelete}) => {
-                for (let item of toUpload) {
-                    let destination = this.configurator.config.remotePath + '/' + item;
-                    destination = destination.replace(/\\/g, '/');
-                    destination = destination.replace(/\/\/+/g, '/');
-                    let time = timeString();
-                    let isDirectory = false;
-                    this.messenger.info(time + ' Uploading to -> ' + destination)
-                    this.uploadFile(destination, this.configurator.config.rootPath + '/' + item, isDirectory)
-                }
+                toUpload = toUpload.map(item => './' + item);
+                this.uploadListRSync(toUpload)
                 this.deleteFileList(toDelete)
                 for (let item of toDelete) {
                     this.messenger.infoSuccess('Deleted: ' + item)

@@ -5,7 +5,12 @@ let sftpMessages = previousState ? previousState.sftpMessages : [];
 function appendMessage(message) {
     const div = document.createElement("div");
     div.setAttribute("class", `sync-sftp-message ${message.type}`)
-    div.append(message.value)
+    let value = message.value.split('<br>')
+    for (const element of value) {
+        let br = document.createElement("br");
+        div.append(element)
+        div.append(br)
+    }
     document.querySelector('#root').append(div)
     document.querySelector('.sync-sftp-message:last-of-type').scrollIntoView()
 }
@@ -14,6 +19,8 @@ for(const message of sftpMessages) {
 }
 window.addEventListener("message", (event) => {
     const message = event.data;
+    console.log('SYNC-SFTP:' ,message);
+
     if (message.type !== 'clear') {
         appendMessage(message)
         sftpMessages.push(message)

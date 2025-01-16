@@ -15,7 +15,7 @@ let syncer = null;
  * @param {vscode.ExtensionContext} context
  */
 function activate(context) {
-    console.log('Congratulations, your extension "sync-sftp" is now active!');
+    console.log("SyncSFTP:" + 'Congratulations, your extension "sync-sftp" is now active!');
     let isPaused = false
     let myStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     let uploadSyncData = {}
@@ -52,10 +52,6 @@ function activate(context) {
     const webviewProvider = utils.createWebViewProvider(context.extensionUri)
     utils.updateStatusBarItem(myStatusBarItem, syncer, webviewProvider)
     statusBarInterval = setInterval(() => utils.updateStatusBarItem(myStatusBarItem, syncer, webviewProvider), 1000)
-    String.prototype.replaceAll = function (search, replacement) {
-        const target = this;
-        return target.replace(new RegExp(search, 'g'), replacement);
-    };
 
     context.subscriptions.push(
         vscode.window.registerWebviewViewProvider("sync-sftp.logView", webviewProvider)
@@ -69,7 +65,7 @@ function activate(context) {
     } else {
         messenger.clear()
         messenger.infoSuccess('Watching directory: ' + configurator.config.rootPath)
-
+        syncer.startTimers()
         syncer.connect()
         runWatcher();
     }
@@ -110,6 +106,7 @@ function activate(context) {
         } else {
             messenger.clear()
             messenger.infoSuccess('Watching directory: ' + configurator.config.rootPath)
+            syncer.startTimers()
             syncer.connect()
             if (!watcher) {
                 runWatcher()
@@ -211,6 +208,14 @@ function deactivate() {
     }
     if (syncer?.timeInterval) {
         clearInterval(syncer.timeInterval)
+    }
+
+    if (syncer?.deleteFileInterval) {
+        clearInterval(syncer.deleteFileInterval)
+    }
+
+    if (syncer?.uploadFileInterval) {
+        clearInterval(syncer.uploadFileInterval)
     }
 }
 

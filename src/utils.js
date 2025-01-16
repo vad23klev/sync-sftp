@@ -1,5 +1,4 @@
 "use strict";
-
 const vscode = require('vscode');
 const fs = require('fs');
 
@@ -46,6 +45,7 @@ exports.createWebViewProvider = function(extensionUri) {
             thisWebview.webview.options={enableScripts:true, retainContextWhenHidden: true, localResourceRoots: [this.extensionUri]}
             thisWebview.webview.html= createWebviewHTML(thisWebview.webview, this.extensionUri);
             this.thisWebview.onDidChangeVisibility((event) => {
+                console.log("SyncSFTP: postMessageToWebview " + this?.thisWebview?.webview , this?.thisWebview?.visible);
                 if (this?.thisWebview?.webview && this?.thisWebview?.visible) {
                     for(let messageElement of this.messages) {
                         this.thisWebview.webview.postMessage(messageElement);
@@ -55,7 +55,9 @@ exports.createWebViewProvider = function(extensionUri) {
             })
         },
         postMessageToWebview: function(message) {
+            console.log("SyncSFTP: postMessageToWebview " + this?.thisWebview?.webview , this?.thisWebview?.visible);
             if (this?.thisWebview?.webview && this?.thisWebview?.visible) {
+                console.log("SyncSFTP:" + this.thisWebview.webview.postMessage);
                 for(let messageElement of this.messages) {
                     this.thisWebview.webview.postMessage(messageElement);
                 }
@@ -126,10 +128,8 @@ exports.syncFile = function (data) {
 
             if (exists) {
                 isDirectory = fs.lstatSync('./' + filename).isDirectory();
-                data.messenger.info(time + ' Uploading to -> ' + destination)
                 data.syncer.uploadFile(destination, filename, isDirectory)
             } else {
-                data.messenger.info(time + ' Delete detected on ' + filename + '. Deleting server file -> ' + destination)
                 data.syncer.deleteFile(destination)
             }
         } else {
