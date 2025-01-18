@@ -46,13 +46,13 @@ class Syncer {
     startTimers() {
         if (this.configurator.isCorrect()) {
             if (this.timeInterval) {
-                clearInterval(syncer.timeInterval)
+                clearInterval(this.timeInterval)
             }
             if (this.deleteFileInterval) {
-                clearInterval(syncer.deleteFileInterval)
+                clearInterval(this.deleteFileInterval)
             }
             if (this.uploadFileInterval) {
-                clearInterval(syncer.uploadFileInterval)
+                clearInterval(this.uploadFileInterval)
             }
             if (this.configurator.config.useRsync) {
                 this.uploadFileInterval = setInterval( async () => {
