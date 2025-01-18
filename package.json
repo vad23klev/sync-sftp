@@ -4,7 +4,7 @@
   "displayName": "Sync SFTP",
   "description": "Sync your project with remote using SFTP",
   "icon": "./icons/icon.png",
-  "version": "0.5.53",
+  "version": "0.5.54",
   "preview": true,
   "engines": {
     "vscode": "^1.91.0"
@@ -18,15 +18,15 @@
   "activationEvents": [
     "workspaceContains:**/.sync-sftp.json"
   ],
-  "main": "./src/extension.js",
+  "main": "./out/extension.js",
   "contributes": {
     "viewsContainers": {
       "activitybar": [
-          {
-              "id": "sync-sftp-view",
-              "title": "Sync SFTP",
-              "icon": "icons/menu-icon.svg"
-          }
+        {
+          "id": "sync-sftp-view",
+          "title": "Sync SFTP",
+          "icon": "icons/menu-icon.svg"
+        }
       ]
     },
     "views": {
@@ -35,8 +35,8 @@
           "type": "webview",
           "id": "sync-sftp.logView",
           "name": "Sync SFTP",
-					"icon": "icons/menu-icon.svg",
-					"contextualTitle": "Sync SFTP"
+          "icon": "icons/menu-icon.svg",
+          "contextualTitle": "Sync SFTP"
         }
       ]
     },
@@ -64,12 +64,6 @@
         "category": "Sync SFTP",
         "title": "Reconnect",
         "icon": "$(debug-disconnect)"
-      },
-      {
-        "command": "sync-sftp.reupload",
-        "category": "Sync SFTP",
-        "title": "Reupload",
-        "icon": "$(cloud-upload)"
       },
       {
         "command": "sync-sftp.clearLog",
@@ -123,16 +117,10 @@
           "when": "view == sync-sftp.logView"
         },
         {
-          "command": "sync-sftp.reupload",
-          "group": "sync-sftp.submenu@2",
-          "when": "view == sync-sftp.logView"
-        },
-        {
           "command": "sync-sftp.clearLog",
           "group": "sync-sftp.submenu@3",
           "when": "view == sync-sftp.logView"
         }
-
       ],
       "explorer/context": [
         {
@@ -143,11 +131,20 @@
     }
   },
   "scripts": {
-    "lint": "eslint .",
-    "pretest": "npm run lint"
+    "lint": "eslint",
+    "pretest": "npm run lint",
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -w -p ./"
   },
   "devDependencies": {
-    "eslint": "^8.57.0"
+    "@types/ping": "^0.4.4",
+    "@types/relaxed-json": "^1.0.4",
+    "@types/rsync": "^0.4.36",
+    "@types/vscode": "^1.73.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.16.0"
   },
   "dependencies": {
     "node-ssh": "^13.2.0",
