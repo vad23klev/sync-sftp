@@ -2,6 +2,8 @@ const vscode = acquireVsCodeApi();
 // Check if we have an old state to restore from
 const previousState = vscode.getState();
 let sftpMessages = previousState ? previousState.sftpMessages : [];
+sftpMessages = sftpMessages.slice(-100);
+vscode.setState({ sftpMessages });
 function appendMessage(message) {
     const div = document.createElement("div");
     div.setAttribute("class", `sync-sftp-message ${message.type}`)
@@ -24,6 +26,7 @@ window.addEventListener("message", (event) => {
     if (message.type !== 'clear') {
         appendMessage(message)
         sftpMessages.push(message)
+        sftpMessages = sftpMessages.slice(-100);
         vscode.setState({ sftpMessages });
     } else {
         sftpMessages = [];
