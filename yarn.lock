@@ -110,6 +110,11 @@
   dependencies:
     "@types/node" "*"
 
+"@types/unixify@^1.0.2":
+  version "1.0.2"
+  resolved "https://registry.yarnpkg.com/@types/unixify/-/unixify-1.0.2.tgz#b5e20670e6af535f8da8de65621fa023078e08a9"
+  integrity sha512-N2N0V5iOmxAWdVyiTWLBvLDYTPXSMzIXjxybr9sKwwr4ybFZ+JYc33yoAxnA1RvOVolNG3Fce0WXwiMcDaPh+w==
+
 "@types/vscode@^1.73.0":
   version "1.96.0"
   resolved "https://registry.yarnpkg.com/@types/vscode/-/vscode-1.96.0.tgz#3181004bf25d71677ae4aacdd7605a3fd7edf08e"
@@ -922,10 +927,9 @@ rimraf@^3.0.2:
   dependencies:
     glob "^7.1.3"
 
-rsync2@^2.0.2:
+rsync2@vad23klev/rsync#aa4d2d2:
   version "2.0.2"
-  resolved "https://registry.yarnpkg.com/rsync2/-/rsync2-2.0.2.tgz#227684c56a6ced51368bc3e276b32eb7203421fc"
-  integrity sha512-z8W7XxTgA6VOi19/U5oKZpWqalJukcU1oCt9BNgO+WMvpA6oFyi4q6EQzsZrTCNaeL+mc3tkHOGbMU5VIFrLBg==
+  resolved "https://codeload.github.com/vad23klev/rsync/tar.gz/aa4d2d282a32f60c3a3d440fc1b1a79476a4ea70"
   dependencies:
     cross-spawn "^7.0.3"
     unixify "^1.0.0"

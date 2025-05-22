@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as RJSON from 'relaxed-json';
+import * as path from 'path'
 
 type SftpOptions = {
     host: string,
@@ -20,6 +21,7 @@ type ConfigFileOptions = {
     sshPath?: string,
     password?: string,
     useRsync?: boolean,
+    rsyncRootPath: string
 };
 type ConfigOptions = {
     remotePath: string,
@@ -32,6 +34,7 @@ type ConfigOptions = {
     sshPath: string,
     useRsync: boolean,
     sftpOptions?: SftpOptions
+    rsyncRootPath: string
 };
 export class Configurator {
     isConfigLoaded = false
@@ -44,7 +47,8 @@ export class Configurator {
     loadConfig(rootPath : string) {
         this.isConfigCorrect = false
         this.isConfigLoaded = false
-        let configText = fs.readFileSync(rootPath + '/.sync-sftp.json')
+        let configText = fs.readFileSync(rootPath + path.sep + '.sync-sftp.json')
+
         let ignorePatterns: string[] = [];
         let host = '';
         let username = '';
@@ -56,6 +60,7 @@ export class Configurator {
         let useRsync = false
         let rsyncExclude:string[] = []
         let rsyncPath = 'rsync'
+        let rsyncRootPath = rootPath
         let sshPath = 'ssh'
         try {
             let optionsText = Buffer.from(configText).toString('utf8')
@@ -75,6 +80,9 @@ export class Configurator {
             }
             if (config.rsyncPath) {
                 rsyncPath = config.rsyncPath
+            }
+            if (config.rsyncRootPath) {
+                rsyncRootPath = config.rsyncRootPath
             }
             if (config.sshPath) {
                 sshPath = config.sshPath
@@ -99,7 +107,8 @@ export class Configurator {
             useRsync,
             rsyncExclude,
             rsyncPath,
-            sshPath
+            sshPath,
+            rsyncRootPath
         }
         if (errors.length === 0) {
             options = {

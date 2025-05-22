@@ -6,6 +6,7 @@ import { Configurator } from './Configurator'
 import { Messenger } from './Messenger'
 import * as path from 'path'
 import {timeString, match} from './utils';
+import unixify = require('unixify');
 
 type UploadFileFailed = {
     destination: string,
@@ -50,7 +51,7 @@ export class Syncer {
                     if (this.isPaused) return
                     console.log("SyncSFTP: uploadFilePending", this.uploadFilePending);
                     if (this.uploadFilePending.length && this.configurator?.isCorrect() && this.isConnected()) {
-                        let outputArray = JSON.parse(JSON.stringify(this.uploadFilePending)).map((item:string) => item.replace(`${this.configurator?.config?.rootPath}`, '.'))
+                        let outputArray = JSON.parse(JSON.stringify(this.uploadFilePending)).map((item:string) => unixify(item.replace(`${this.configurator?.config?.rootPath}`, '.')))
                         this.uploadFilePending = [];
                         this.uploadListRSync(outputArray)
                     }
@@ -109,9 +110,9 @@ export class Syncer {
                     let destinationFirstPart = this.configurator.config.sftpOptions?.username + '@' + this.configurator.config.sftpOptions?.host + ':';
                     let destinationLastPart = this.configurator.config.remotePath;
                     this.rsyncList._sources = [];
-                    this.rsyncList._sources.push(`${this.configurator.config.rootPath}`)
+                    this.rsyncList._sources.push(`${this.configurator.config.rsyncRootPath}`)
                     this.rsyncList._destination = `"${destinationFirstPart + destinationLastPart}"`
-                    this.rsyncList.set('files-from', `${this.configurator.config.rootPath}/.vscode/.file-list`)
+                    this.rsyncList.set('files-from', `${this.configurator.config.rsyncRootPath}.vscode/.file-list`)
                 }
             }
         }).catch((e) => {
@@ -177,7 +178,6 @@ export class Syncer {
         let time = timeString();
         let text = list.join('\n');
         fs.writeFileSync(`${this.configurator?.config?.rootPath}/.vscode/.file-list`, text, 'utf8');
-        console.log("SyncSFTP:" + this.rsyncList.command());
         await this.rsyncList.execute().then(() => {
             this.messenger?.infoSuccess(time + ' Successfully uploaded ' + list.join('<br>'))
         }).catch((error:any) => {
@@ -263,12 +263,12 @@ export class Syncer {
         let text = ''
         let rsync = new Rsync({executable: this.configurator?.config?.rsyncPath})
         rsync.exclude(this.configurator?.config?.rsyncExclude.length ? this.configurator?.config?.rsyncExclude: this.configurator?.config?.ignorePatterns);
-        // rsync.shell(`${this.configurator?.config?.sshPath} -p 22`)
+        rsync.shell(`${this.configurator?.config?.sshPath} -p 22`)
         rsync.output((data:any) => {text += data.toString()},(data:any) => {console.warn(data.toString());} )
         let destinationFirstPart = this.configurator?.config?.sftpOptions?.username + '@' + this.configurator?.config?.sftpOptions?.host + ':';
         let destinationLastPart = this.configurator?.config?.remotePath;
         rsync._sources = [];
-        rsync._sources.push(this.configurator?.config?.rootPath + '/')
+        rsync._sources.push(this.configurator?.config?.rsyncRootPath)
         rsync._destination = destinationFirstPart + destinationLastPart
         rsync.set('dry-run')
         rsync.set('no-perms')
@@ -280,6 +280,8 @@ export class Syncer {
         rsync.set('links')
         rsync.set('checksum')
         rsync.set('itemize-changes')
+
+        console.log(rsync.command())
         try {
             return rsync.execute().then(() => {
                 let lines = text.split(/\n/)

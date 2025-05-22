@@ -7,6 +7,7 @@ import {Messenger} from './Messenger'
 import {Configurator} from './Configurator'
 import {match, timeString} from './utils';
 import {SftpViewProvider, Message} from  './SftpViewProvider'
+import * as path from 'path'
 
 
 type SyncFileData = {
@@ -40,13 +41,13 @@ export function syncFile (data: SyncFileData) {
             let time = timeString();
             data.messenger.info(time + ' Change detected: ' + filename.replace(data.configurator.config?.rootPath ?? '', ''))
             let isDirectory = false;
-            const exists = fs.existsSync('./' + filename);
+            const exists = fs.existsSync(filename);
             let destination = data.configurator.config?.remotePath + '/' + filename.replace(data.configurator.config?.rootPath ?? '', '.');
             destination = destination.replace(/\\/g, '/');
             destination = destination.replace(/\/\/+/g, '/');
 
             if (exists) {
-                isDirectory = fs.lstatSync('./' + filename).isDirectory();
+                isDirectory = fs.lstatSync(filename).isDirectory();
                 data.syncer.uploadFile(destination, filename, isDirectory)
             } else {
                 data.syncer.deleteFile(destination)
@@ -103,7 +104,7 @@ export function activate(context : vscode.ExtensionContext) {
         vscode.window.registerWebviewViewProvider("sync-sftp.logView", webviewProvider)
     );
     messenger.setAppendMessage((message: Message) => webviewProvider.postMessageToWebview(message))
-    let configPath = vscode.workspace?.workspaceFolders && vscode.workspace?.workspaceFolders[0] ? vscode.workspace?.workspaceFolders[0].uri.path : ''
+    let configPath = vscode.workspace?.workspaceFolders && vscode.workspace?.workspaceFolders[0] ? vscode.workspace?.workspaceFolders[0].uri.fsPath : ''
     configurator.loadConfig(configPath)
     if (configurator.config?.errors.length) {
         for(let error of configurator.config?.errors) {
@@ -145,7 +146,7 @@ export function activate(context : vscode.ExtensionContext) {
         }
     });
     const reload = vscode.commands.registerCommand('sync-sftp.reloadConfig', function () {
-        let configPath = vscode.workspace?.workspaceFolders && vscode.workspace?.workspaceFolders[0] ? vscode.workspace?.workspaceFolders[0].uri.path : ''
+        let configPath = vscode.workspace?.workspaceFolders && vscode.workspace?.workspaceFolders[0] ? vscode.workspace?.workspaceFolders[0].uri.fsPath : ''
         configurator.loadConfig(configPath)
         if (configurator.config?.errors.length) {
             for(let error of configurator.config?.errors) {

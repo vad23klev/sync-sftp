@@ -4,7 +4,7 @@
   "displayName": "Sync SFTP",
   "description": "Sync your project with remote using SFTP",
   "icon": "./icons/icon.png",
-  "version": "0.5.54",
+  "version": "1.0.0",
   "preview": true,
   "engines": {
     "vscode": "^1.91.0"
@@ -141,6 +141,7 @@
     "@types/ping": "^0.4.4",
     "@types/relaxed-json": "^1.0.4",
     "@types/rsync": "^0.4.36",
+    "@types/unixify": "^1.0.2",
     "@types/vscode": "^1.73.0",
     "eslint": "^8.57.0",
     "typescript": "^5.7.2",
@@ -151,6 +152,7 @@
     "node-watch": "^0.7",
     "ping": "^0.4.4",
     "relaxed-json": "^1.0.0",
-    "rsync2": "^2.0.2"
+    "rsync2": "vad23klev/rsync#aa4d2d2",
+    "unixify": "^1.0.0"
   }
 }

@@ -25,7 +25,7 @@ export class SftpViewProvider implements vscode.WebviewViewProvider {
 	) {
 		this._view = webviewView;
 
-		webviewView.webview.options = {
+		this._view.webview.options = {
 			// Allow scripts in the webview
 			enableScripts: true,
 
@@ -34,10 +34,9 @@ export class SftpViewProvider implements vscode.WebviewViewProvider {
 			]
 		};
 
-		webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+		this._view.webview.html = this._getHtmlForWebview(this._view.webview);
 
-		webviewView.webview.onDidReceiveMessage(data => {
-			console.log("SyncSFTP: postMessageToWebview " + webviewView.webview , webviewView.visible);
+		this._view.webview.onDidReceiveMessage(data => {
 			if (webviewView.webview && webviewView.visible) {
 				for(let messageElement of this.messages) {
 					webviewView.webview.postMessage(messageElement);
@@ -47,9 +46,7 @@ export class SftpViewProvider implements vscode.WebviewViewProvider {
 		});
 	}
 	public postMessageToWebview(message: Message) {
-		console.log("SyncSFTP: postMessageToWebview " + this._view?.webview , this._view?.visible);
 		if (this._view?.webview && this._view?.visible) {
-			console.log("SyncSFTP:" + this._view.webview.postMessage);
 			for(let messageElement of this.messages) {
 				this._view.webview.postMessage(messageElement);
 			}
