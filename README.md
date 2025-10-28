@@ -18,7 +18,10 @@ The extension works out of the box if working directory has file ```sftp-config.
     "rsyncExclude": [<Array with exclude path for rsync>],
     "rsyncPath": "<Rsync path>",
     "sshPath": "<SSH path>",
+    "sshpassPath": "<SSHPASS path>",
     "rsyncRootPath": "<absolute folder path>"
+    "useRsyncPassword": <true/false>,
+    "verbose": <true/false>,
 
 }
 ```

@@ -18,10 +18,13 @@ type ConfigFileOptions = {
     port?: number,
     rsyncExclude?: string[],
     rsyncPath?: string,
+    sshpassPath?: string,
     sshPath?: string,
     password?: string,
     useRsync?: boolean,
     rsyncRootPath: string
+    verbose?: boolean
+    useRsyncPassword?: boolean
 };
 type ConfigOptions = {
     remotePath: string,
@@ -31,10 +34,14 @@ type ConfigOptions = {
     port?: number,
     rsyncExclude: string[],
     rsyncPath: string,
+    password: string,
+    sshpassPath: string,
     sshPath: string,
     useRsync: boolean,
     sftpOptions?: SftpOptions
     rsyncRootPath: string
+    verbose: boolean
+    useRsyncPassword: boolean
 };
 export class Configurator {
     isConfigLoaded = false
@@ -60,8 +67,11 @@ export class Configurator {
         let useRsync = false
         let rsyncExclude:string[] = []
         let rsyncPath = 'rsync'
+        let sshpassPath = 'sshpass'
         let rsyncRootPath = rootPath
         let sshPath = 'ssh'
+        let verbose = false
+        let useRsyncPassword = false
         try {
             let optionsText = Buffer.from(configText).toString('utf8')
             const config: ConfigFileOptions = <ConfigFileOptions>RJSON.parse(optionsText);
@@ -81,6 +91,9 @@ export class Configurator {
             if (config.rsyncPath) {
                 rsyncPath = config.rsyncPath
             }
+            if (config.sshpassPath) {
+                sshpassPath = config.sshpassPath
+            }
             if (config.rsyncRootPath) {
                 rsyncRootPath = config.rsyncRootPath
             }
@@ -96,6 +109,12 @@ export class Configurator {
             if (config.useRsync) {
                 useRsync = config.useRsync
             }
+            if (config.verbose) {
+                verbose = config.verbose
+            }
+            if (config.useRsyncPassword) {
+                useRsyncPassword = config.useRsyncPassword
+            }
         } catch (e) {
             errors.push('Error: Unable to parse sftp-config.json!')
         }
@@ -108,7 +127,11 @@ export class Configurator {
             rsyncExclude,
             rsyncPath,
             sshPath,
-            rsyncRootPath
+            password,
+            rsyncRootPath,
+            verbose,
+            useRsyncPassword,
+            sshpassPath
         }
         if (errors.length === 0) {
             options = {

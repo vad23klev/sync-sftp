@@ -7,6 +7,7 @@ import { Messenger } from './Messenger'
 import * as path from 'path'
 import {timeString, match} from './utils';
 import unixify = require('unixify');
+import * as vscode from 'vscode';
 
 type UploadFileFailed = {
     destination: string,
@@ -17,6 +18,7 @@ export class Syncer {
 
     configurator?:Configurator
     messenger?:Messenger
+    logger?:vscode.LogOutputChannel
 
     uploadFileFailed:UploadFileFailed[] = [];
     uploadFilePending:string[] = [];
@@ -31,9 +33,10 @@ export class Syncer {
     deleteFileInterval?: NodeJS.Timeout;
     uploadFileInterval?: NodeJS.Timeout;
 
-    constructor(configurator: Configurator, messenger: Messenger) {
+    constructor(configurator: Configurator, messenger: Messenger, logger:vscode.LogOutputChannel) {
         this.configurator = configurator
         this.messenger = messenger
+        this.logger = logger
     }
     startTimers() {
         if (this.configurator?.isCorrect()) {
@@ -49,7 +52,7 @@ export class Syncer {
             if (this.configurator?.config?.useRsync) {
                 this.uploadFileInterval = setInterval( async () => {
                     if (this.isPaused) return
-                    console.log("SyncSFTP: uploadFilePending", this.uploadFilePending);
+                    this.logger?.trace("uploadFilePending", this.uploadFilePending);
                     if (this.uploadFilePending.length && this.configurator?.isCorrect() && this.isConnected()) {
                         let outputArray = JSON.parse(JSON.stringify(this.uploadFilePending)).map((item:string) => unixify(item.replace(`${this.configurator?.config?.rootPath}`, '.')))
                         this.uploadFilePending = [];
@@ -60,7 +63,7 @@ export class Syncer {
                 this.deleteFileInterval = setInterval( async () => {
                     if (this.isPaused) return
 
-                    console.log("SyncSFTP: deleteFilePending", this.deleteFilePending);
+                    this.logger?.trace("deleteFilePending", this.deleteFilePending);
                     if (this.deleteFilePending.length && this.configurator?.isCorrect() && this.isConnected()) {
                         let outputArray = JSON.parse(JSON.stringify(this.deleteFilePending))
                         this.deleteFilePending = [];
@@ -96,14 +99,14 @@ export class Syncer {
                 this.sftp.connect(this.configurator?.config?.sftpOptions).then(() => {
                     this.messenger?.infoSuccess('Config load success: ' + this.configurator?.config?.rootPath)
                 }, (error: any)=> {
-                    console.warn("SyncSFTP:" +  JSON.stringify(error))
+                    this.logger?.warn(JSON.stringify(error))
                 })
                 if (this.configurator?.config?.useRsync) {
-                    this.rsync = new Rsync({executable: this.configurator.config.rsyncPath})
+                    this.rsync = new Rsync({executable: this.getRsyncPath()})
 
                     this.rsync.exclude(this.configurator.config.rsyncExclude.length ? this.configurator.config.rsyncExclude: this.configurator.config.ignorePatterns);
                     this.rsync.shell(`${this.configurator.config.sshPath} -p 22`).setFlags('zarv')
-                    this.rsyncList = new Rsync({executable: this.configurator.config.rsyncPath})
+                    this.rsyncList = new Rsync({executable: this.getRsyncPath()})
 
                     this.rsyncList.exclude(this.configurator.config.rsyncExclude.length ? this.configurator.config.rsyncExclude: this.configurator.config.ignorePatterns);
                     this.rsyncList.shell(`${this.configurator.config.sshPath} -p 22`).setFlags('zarv')
@@ -116,7 +119,7 @@ export class Syncer {
                 }
             }
         }).catch((e) => {
-            console.warn("SyncSFTP:" +  JSON.stringify(e))
+            this.logger?.warn(JSON.stringify(e))
             this.messenger?.error('Can\'t connect to server')
         })
     }
@@ -178,13 +181,16 @@ export class Syncer {
         let time = timeString();
         let text = list.join('\n');
         fs.writeFileSync(`${this.configurator?.config?.rootPath}/.vscode/.file-list`, text, 'utf8');
+        if (this.configurator?.config?.verbose) {
+            this.logger?.debug(this.rsyncList.command())
+        }
         await this.rsyncList.execute().then(() => {
             this.messenger?.infoSuccess(time + ' Successfully uploaded ' + list.join('<br>'))
         }).catch((error:any) => {
             if (JSON.stringify(error) === '{}') {
                 this.messenger?.infoSuccess(time + ' Successfully uploaded ' + list.join('<br>'))
             } else {
-                console.warn("SyncSFTP:" +  JSON.stringify(error))
+                this.logger?.warn(JSON.stringify(error))
             }
         });
 
@@ -199,7 +205,7 @@ export class Syncer {
         await this.rsync.execute().then(() => {
             this.messenger?.infoSuccess(time + ' Successfully uploaded ' + filename)
         }).catch((error:any) => {
-            console.warn("SyncSFTP:" +  JSON.stringify(error))
+            this.logger?.warn(JSON.stringify(error))
             if (error.code == 12 || error.code == 3) {
                 let parent = destination
                 parent = parent.replace(/[^/]+$/, '')
@@ -239,7 +245,9 @@ export class Syncer {
             commandList.push(`rm -rf "${path}"`)
         }
         if (commandList.length) {
-            console.log(commandList.join(' && ').replace(/\/\/+/g,'/'));
+            if (this.configurator?.config?.verbose) {
+                this.logger?.debug(commandList.join(' && ').replace(/\/\/+/g,'/'));
+            }
             this.sftp.execCommand(commandList.join(' && ').replace(/\/\/+/g,'/'),{ cwd:'/var/www' });
         }
     }
@@ -253,7 +261,10 @@ export class Syncer {
         }
         if (commandList.length) {
             let time = timeString();
-            console.log(commandList.join(' && ').replace(/\/\/+/g,'/'));
+
+            if (this.configurator?.config?.verbose) {
+                this.logger?.debug(commandList.join(' && ').replace(/\/\/+/g,'/'));
+            }
             this.sftp.execCommand(commandList.join(' && ').replace(/\/\/+/g,'/'),{ cwd:'/var/www' });
             this.messenger?.infoSuccess(time + ' Successfully deleted ' + list.join('<br>'))
         }
@@ -261,10 +272,10 @@ export class Syncer {
     async detectChanges() {
         if (this.isPaused) return false
         let text = ''
-        let rsync = new Rsync({executable: this.configurator?.config?.rsyncPath})
+        let rsync = new Rsync({executable: this.getRsyncPath()})
         rsync.exclude(this.configurator?.config?.rsyncExclude.length ? this.configurator?.config?.rsyncExclude: this.configurator?.config?.ignorePatterns);
         rsync.shell(`${this.configurator?.config?.sshPath} -p 22`)
-        rsync.output((data:any) => {text += data.toString()},(data:any) => {console.warn(data.toString());} )
+        rsync.output((data:any) => {text += data.toString()},(data:any) => {this.logger?.warn(data.toString());} )
         let destinationFirstPart = this.configurator?.config?.sftpOptions?.username + '@' + this.configurator?.config?.sftpOptions?.host + ':';
         let destinationLastPart = this.configurator?.config?.remotePath;
         rsync._sources = [];
@@ -281,7 +292,9 @@ export class Syncer {
         rsync.set('checksum')
         rsync.set('itemize-changes')
 
-        console.log(rsync.command())
+        if (this.configurator?.config?.verbose) {
+            this.logger?.debug(rsync.command())
+        }
         try {
             return rsync.execute().then(() => {
                 let lines = text.split(/\n/)
@@ -290,10 +303,10 @@ export class Syncer {
                 let toDelete = lines.filter(item => RegExp(/\*deleting.+/).exec(item)).map(item => item.replace(/^[^ ]+ +/, ''))
                 return {toUpload, toDelete}
             }).catch((error:any) => {
-                console.warn("SyncSFTP:" +  JSON.stringify(error))
+                this.logger?.warn(JSON.stringify(error))
             })
         } catch (error) {
-            console.warn("SyncSFTP:" +  JSON.stringify(error))
+            this.logger?.warn(JSON.stringify(error))
         }
     }
     async notifyAboutChanges() {
@@ -307,7 +320,7 @@ export class Syncer {
                 }
                 this.messenger?.infoSuccess('Total different size: ' + (toUpload.length + toDelete.length))
             }).catch((error) => {
-                console.warn("SyncSFTP:" +  JSON.stringify(error))
+                this.logger?.warn(JSON.stringify(error))
             })
         }
     }
@@ -321,7 +334,7 @@ export class Syncer {
                     this.messenger?.infoSuccess('Deleted: ' + item)
                 }
             }).catch((error) => {
-                console.warn("SyncSFTP:" +  JSON.stringify(error))
+                this.logger?.warn(JSON.stringify(error))
             })
         }
     }
@@ -343,5 +356,15 @@ export class Syncer {
     }
     toggle() {
         this.isPaused = !this.isPaused
+    }
+    getRsyncPath() {
+        let result = ''
+        if (this.configurator?.config?.useRsync) {
+            if (this.configurator?.config?.useRsyncPassword) {
+                result += `${this.configurator.config.sshpassPath} -p '${this.configurator?.config?.password}' `
+            }
+            result += this.configurator.config.rsyncPath
+        }
+        return result
     }
 }

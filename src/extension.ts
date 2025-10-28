@@ -60,10 +60,12 @@ export function syncFile (data: SyncFileData) {
 let watcher: Watcher
 let statusBarInterval: NodeJS.Timeout
 let syncer:Syncer
-
+let logger:vscode.LogOutputChannel
 
 export function activate(context : vscode.ExtensionContext) {
-    console.log("SyncSFTP:" + 'Congratulations, your extension "sync-sftp" is now active!');
+    logger = vscode.window.createOutputChannel('SyncSFTP', { log: true });
+    logger.clear();
+    logger.info('Congratulations, your extension "sync-sftp" is now active!');
     let isPaused = false
     let myStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     let uploadSyncData:SyncFileData
@@ -71,7 +73,7 @@ export function activate(context : vscode.ExtensionContext) {
     let messenger = new Messenger();
     let configurator = new Configurator();
     myStatusBarItem.command = 'sync-sftp.reconnect';
-    syncer = new Syncer(configurator, messenger);
+    syncer = new Syncer(configurator, messenger, logger);
     function runWatcher() {
         let onIgnore = () => {}
         watcherSyncData = {
@@ -238,5 +240,8 @@ export function deactivate() {
 
     if (syncer?.uploadFileInterval) {
         clearInterval(syncer.uploadFileInterval)
+    }
+    if (logger) {
+        logger.dispose()
     }
 }
