@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as RJSON from 'relaxed-json';
 import * as path from 'path'
+import * as os from 'os'
 
 type SftpOptions = {
     host: string,
@@ -41,7 +42,8 @@ type ConfigOptions = {
     sftpOptions?: SftpOptions
     rsyncRootPath: string
     verbose: boolean
-    useRsyncPassword: boolean
+    useRsyncPassword: boolean,
+    isWindows: boolean
 };
 export class Configurator {
     isConfigLoaded = false
@@ -131,7 +133,8 @@ export class Configurator {
             rsyncRootPath,
             verbose,
             useRsyncPassword,
-            sshpassPath
+            sshpassPath,
+            isWindows: os.platform() === 'win32'
         }
         if (errors.length === 0) {
             options = {

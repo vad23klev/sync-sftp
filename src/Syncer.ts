@@ -32,6 +32,7 @@ export class Syncer {
     timeInterval?: NodeJS.Timeout;
     deleteFileInterval?: NodeJS.Timeout;
     uploadFileInterval?: NodeJS.Timeout;
+    reconnectInterval?: NodeJS.Timeout;
 
     constructor(configurator: Configurator, messenger: Messenger, logger:vscode.LogOutputChannel) {
         this.configurator = configurator
@@ -40,23 +41,20 @@ export class Syncer {
     }
     startTimers() {
         if (this.configurator?.isCorrect()) {
-            if (this.timeInterval) {
-                clearInterval(this.timeInterval)
-            }
-            if (this.deleteFileInterval) {
-                clearInterval(this.deleteFileInterval)
-            }
-            if (this.uploadFileInterval) {
-                clearInterval(this.uploadFileInterval)
-            }
+            this.clearTimers()
             if (this.configurator?.config?.useRsync) {
                 this.uploadFileInterval = setInterval( async () => {
                     if (this.isPaused) return
                     this.logger?.trace("uploadFilePending", this.uploadFilePending);
                     if (this.uploadFilePending.length && this.configurator?.isCorrect() && this.isConnected()) {
-                        let outputArray = JSON.parse(JSON.stringify(this.uploadFilePending)).map((item:string) => unixify(item.replace(`${this.configurator?.config?.rootPath}`, '.')))
-                        this.uploadFilePending = [];
-                        this.uploadListRSync(outputArray)
+                        if (this.configurator?.config?.isWindows) {
+                            this.uploadFilePending = [];
+                            this.makeEqual()
+                        } else {
+                            let outputArray = JSON.parse(JSON.stringify(this.uploadFilePending)).map((item:string) => unixify(item.replace(`${this.configurator?.config?.rootPath}`, '.')))
+                            this.uploadFilePending = [];
+                            this.uploadListRSync(outputArray)
+                        }
                     }
                 }, 2000)
 
@@ -65,9 +63,14 @@ export class Syncer {
 
                     this.logger?.trace("deleteFilePending", this.deleteFilePending);
                     if (this.deleteFilePending.length && this.configurator?.isCorrect() && this.isConnected()) {
-                        let outputArray = JSON.parse(JSON.stringify(this.deleteFilePending))
-                        this.deleteFilePending = [];
-                        this.deleteFileListPending(outputArray)
+                        if (this.configurator?.config?.isWindows) {
+                            this.deleteFilePending = [];
+                            this.makeEqual()
+                        } else {
+                            let outputArray = JSON.parse(JSON.stringify(this.deleteFilePending))
+                            this.deleteFilePending = [];
+                            this.deleteFileListPending(outputArray)
+                        }
                     }
                 }, 2000)
             } else {
@@ -84,6 +87,25 @@ export class Syncer {
                     }
                 }, 2000)
             }
+            this.reconnectInterval = setInterval( async () => {
+                if (this.isPaused) return
+                if (this.isConnected()) return
+                this.connect()
+            }, 5000)
+        }
+    }
+    clearTimers() {
+        if (this.timeInterval) {
+            clearInterval(this.timeInterval)
+        }
+        if (this.deleteFileInterval) {
+            clearInterval(this.deleteFileInterval)
+        }
+        if (this.uploadFileInterval) {
+            clearInterval(this.uploadFileInterval)
+        }
+        if (this.reconnectInterval) {
+            clearInterval(this.reconnectInterval)
         }
     }
     connect() {

@@ -7,8 +7,6 @@ import {Messenger} from './Messenger'
 import {Configurator} from './Configurator'
 import {match, timeString} from './utils';
 import {SftpViewProvider, Message} from  './SftpViewProvider'
-import * as path from 'path'
-
 
 type SyncFileData = {
     configurator: Configurator,
@@ -91,7 +89,7 @@ export function activate(context : vscode.ExtensionContext) {
                 filter: function (filename) {
                     // Don't watch file if it matches 'ignore_regexes'
                     return !match(filename, configurator.config?.ignorePatterns ?? [])
-                },
+                }
             },
             function (env, filename) {
                 syncFileWatcher(filename)
@@ -165,6 +163,7 @@ export function activate(context : vscode.ExtensionContext) {
         }
     });
     const reconnect = vscode.commands.registerCommand('sync-sftp.reconnect', function () {
+        syncer.startTimers()
         syncer.connect()
     });
 
@@ -230,17 +229,7 @@ export function deactivate() {
     if (statusBarInterval) {
         clearInterval(statusBarInterval)
     }
-    if (syncer?.timeInterval) {
-        clearInterval(syncer.timeInterval)
-    }
-
-    if (syncer?.deleteFileInterval) {
-        clearInterval(syncer.deleteFileInterval)
-    }
-
-    if (syncer?.uploadFileInterval) {
-        clearInterval(syncer.uploadFileInterval)
-    }
+    syncer?.clearTimers()
     if (logger) {
         logger.dispose()
     }
