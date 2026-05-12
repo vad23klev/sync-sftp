@@ -24,8 +24,16 @@ type ConfigFileOptions = {
     password?: string,
     useRsync?: boolean,
     rsyncRootPath: string
-    verbose?: boolean
-    useRsyncPassword?: boolean
+    verbose?: boolean,
+    isWindows?: boolean,
+    useRsyncPassword?: boolean,
+    uploadFileInterval?: number,
+    deleteFileInterval?: number,
+    timeWithoutRSyncInterval?: number,
+    reconnectInterval?: number,
+    useSshControl?: boolean,
+    sshControlPersist?: string,
+    sshControlPath?: string,
 };
 type ConfigOptions = {
     remotePath: string,
@@ -43,7 +51,14 @@ type ConfigOptions = {
     rsyncRootPath: string
     verbose: boolean
     useRsyncPassword: boolean,
-    isWindows: boolean
+    isWindows: boolean,
+    uploadFileInterval: number,
+    deleteFileInterval: number,
+    timeWithoutRSyncInterval: number,
+    reconnectInterval: number,
+    useSshControl?: boolean,
+    sshControlPersist: string,
+    sshControlPath: string,
 };
 export class Configurator {
     isConfigLoaded = false
@@ -73,7 +88,16 @@ export class Configurator {
         let rsyncRootPath = rootPath
         let sshPath = 'ssh'
         let verbose = false
+        let isWindows = false
         let useRsyncPassword = false
+        let uploadFileInterval = 2000;
+        let deleteFileInterval = 2000;
+        let timeWithoutRSyncInterval = 2000;
+        let reconnectInterval = 5000;
+        let useSshControl = false
+        let sshControlPersist = '10m'
+        let sshControlPath = '~/.ssh/master-%r@%h:%p'
+
         try {
             let optionsText = Buffer.from(configText).toString('utf8')
             const config: ConfigFileOptions = <ConfigFileOptions>RJSON.parse(optionsText);
@@ -117,6 +141,31 @@ export class Configurator {
             if (config.useRsyncPassword) {
                 useRsyncPassword = config.useRsyncPassword
             }
+            if (config.isWindows) {
+                isWindows = config.isWindows
+            }
+            if (config.uploadFileInterval) {
+                uploadFileInterval = config.uploadFileInterval
+            }
+            if (config.deleteFileInterval) {
+                deleteFileInterval = config.deleteFileInterval
+            }
+            if (config.timeWithoutRSyncInterval) {
+                timeWithoutRSyncInterval = config.timeWithoutRSyncInterval
+            }
+            if (config.reconnectInterval) {
+                reconnectInterval = config.reconnectInterval
+            }
+
+            if (config.useSshControl) {
+                useSshControl = config.useSshControl
+            }
+            if (config.sshControlPersist) {
+                sshControlPersist = config.sshControlPersist
+            }
+            if (config.sshControlPath) {
+                sshControlPath = config.sshControlPath
+            }
         } catch (e) {
             errors.push('Error: Unable to parse sftp-config.json!')
         }
@@ -134,7 +183,14 @@ export class Configurator {
             verbose,
             useRsyncPassword,
             sshpassPath,
-            isWindows: os.platform() === 'win32'
+            isWindows,
+            uploadFileInterval,
+            deleteFileInterval,
+            timeWithoutRSyncInterval,
+            reconnectInterval,
+            useSshControl,
+            sshControlPersist,
+            sshControlPath
         }
         if (errors.length === 0) {
             options = {

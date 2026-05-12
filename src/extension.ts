@@ -37,7 +37,9 @@ export function syncFile (data: SyncFileData) {
     return async function(filename: string) {
         if (!match(filename, data.configurator.config?.ignorePatterns ?? [])) {
             let time = timeString();
-            data.messenger.info(time + ' Change detected: ' + filename.replace(data.configurator.config?.rootPath ?? '', ''))
+            if (data.configurator.config?.isWindows !== true) {
+                data.messenger.info(time + ' Change detected: ' + filename.replace(data.configurator.config?.rootPath ?? '', ''))
+            }
             let isDirectory = false;
             const exists = fs.existsSync(filename);
             let destination = data.configurator.config?.remotePath + '/' + filename.replace(data.configurator.config?.rootPath ?? '', '.');
@@ -139,7 +141,8 @@ export function activate(context : vscode.ExtensionContext) {
             }
             const syncFileCommand = syncFile(uploadSyncData);
             for (let file of allSelections) {
-                let filename = file.path
+                // /C:/Users/prog27/projects/extranet.101hotels.prog27/assets/vue/components/Hotel/Features/Features.vue
+                let filename = (configurator.config?.rootPath ?? '') + "/" + vscode.workspace.asRelativePath(file)
                 // Upload if it doesn't match the ignorePatterns
                 syncFileCommand(filename)
             }

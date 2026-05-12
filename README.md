@@ -22,6 +22,14 @@ The extension works out of the box if working directory has file ```sftp-config.
     "rsyncRootPath": "<absolute folder path>"
     "useRsyncPassword": <true/false>,
     "verbose": <true/false>,
+    "isWindows": <true/false>,
+    "uploadFileInterval": 2000,
+    "deleteFileInterval": 2000,
+    "timeWithoutRSyncInterval": 2000,
+    "reconnectInterval": 5000,
+    "useSshControl": <true/false>,,
+    "sshControlPersist": "10m",
+    "sshControlPath": "~/.ssh/master-%r@%h:%p",
 
 }
 ```

@@ -56,7 +56,7 @@ export class Syncer {
                             this.uploadListRSync(outputArray)
                         }
                     }
-                }, 2000)
+                }, this.configurator?.config?.uploadFileInterval ?? 2000)
 
                 this.deleteFileInterval = setInterval( async () => {
                     if (this.isPaused) return
@@ -72,7 +72,7 @@ export class Syncer {
                             this.deleteFileListPending(outputArray)
                         }
                     }
-                }, 2000)
+                }, this.configurator?.config?.deleteFileInterval ?? 2000)
             } else {
                 this.timeInterval = setInterval( async () => {
                     if (this.isPaused) return
@@ -85,13 +85,13 @@ export class Syncer {
                             await this.uploadFile(element.destination,element.filename, element.isDirectory)
                         }
                     }
-                }, 2000)
+                }, this.configurator?.config?.timeWithoutRSyncInterval ?? 2000)
             }
             this.reconnectInterval = setInterval( async () => {
                 if (this.isPaused) return
                 if (this.isConnected()) return
                 this.connect()
-            }, 5000)
+            }, this.configurator?.config?.reconnectInterval ?? 5000)
         }
     }
     clearTimers() {
@@ -127,11 +127,11 @@ export class Syncer {
                     this.rsync = new Rsync({executable: this.getRsyncPath()})
 
                     this.rsync.exclude(this.configurator.config.rsyncExclude.length ? this.configurator.config.rsyncExclude: this.configurator.config.ignorePatterns);
-                    this.rsync.shell(`${this.configurator.config.sshPath} -p 22`).setFlags('zarv')
+                    this.rsync.shell(`${this.getSshPath()}`).setFlags('zarv')
                     this.rsyncList = new Rsync({executable: this.getRsyncPath()})
 
                     this.rsyncList.exclude(this.configurator.config.rsyncExclude.length ? this.configurator.config.rsyncExclude: this.configurator.config.ignorePatterns);
-                    this.rsyncList.shell(`${this.configurator.config.sshPath} -p 22`).setFlags('zarv')
+                    this.rsyncList.shell(`${this.getSshPath()}`).setFlags('zarv')
                     let destinationFirstPart = this.configurator.config.sftpOptions?.username + '@' + this.configurator.config.sftpOptions?.host + ':';
                     let destinationLastPart = this.configurator.config.remotePath;
                     this.rsyncList._sources = [];
@@ -388,5 +388,14 @@ export class Syncer {
             result += this.configurator.config.rsyncPath
         }
         return result
+    }
+    getSshPath() {
+        if (this.configurator?.config?.sshPath) {
+            if (this.configurator?.config?.useSshControl) {
+                return `${this.configurator.config.sshPath} -o ControlMaster=auto -o ControlPath=${this.configurator.config.sshControlPath} -o ControlPersist=${this.configurator.config.sshControlPersist} -p 22`
+            }
+            return `${this.configurator.config.sshPath} -p 22`
+        }
+        return `ssh`
     }
 }
