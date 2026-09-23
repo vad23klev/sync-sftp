@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
-import {Watcher} from 'node-watch';
-import watch from 'node-watch';
+import chokidar from 'chokidar';
 import {Syncer} from './Syncer'
 import {Messenger} from './Messenger'
 import {Configurator} from './Configurator'
@@ -45,7 +44,6 @@ export function syncFile (data: SyncFileData) {
             let destination = data.configurator.config?.remotePath + '/' + filename.replace(data.configurator.config?.rootPath ?? '', '.');
             destination = destination.replace(/\\/g, '/');
             destination = destination.replace(/\/\/+/g, '/');
-
             if (exists) {
                 isDirectory = fs.lstatSync(filename).isDirectory();
                 data.syncer.uploadFile(destination, filename, isDirectory)
@@ -57,7 +55,7 @@ export function syncFile (data: SyncFileData) {
         }
     }
 }
-let watcher: Watcher
+let chokidarWatcher: any;
 let statusBarInterval: NodeJS.Timeout
 let syncer:Syncer
 let logger:vscode.LogOutputChannel
@@ -84,19 +82,16 @@ export function activate(context : vscode.ExtensionContext) {
         }
         const syncFileWatcher = syncFile(watcherSyncData);
         // Initiate the watcher
-        watcher = watch(
+        chokidarWatcher = chokidar.watch(
             configurator.config?.rootPath ?? '',
             {
-                recursive: true,
-                filter: function (filename) {
-                    // Don't watch file if it matches 'ignore_regexes'
-                    return !match(filename, configurator.config?.ignorePatterns ?? [])
-                }
-            },
-            function (env, filename) {
-                syncFileWatcher(filename)
+                usePolling: true,
+                ignoreInitial: true,
+                ignored: (filename) => match(filename, configurator.config?.ignorePatterns ?? [])
             }
-        );
+        ).on('all', (event, path) => {
+            syncFileWatcher(path)
+        });
     }
     const webviewProvider = new SftpViewProvider(context.extensionUri);
     updateStatusBarItem(myStatusBarItem, syncer, webviewProvider)
@@ -141,8 +136,7 @@ export function activate(context : vscode.ExtensionContext) {
             }
             const syncFileCommand = syncFile(uploadSyncData);
             for (let file of allSelections) {
-                // /C:/Users/prog27/projects/extranet.101hotels.prog27/assets/vue/components/Hotel/Features/Features.vue
-                let filename = (configurator.config?.rootPath ?? '') + "/" + vscode.workspace.asRelativePath(file)
+                let filename = file.fsPath
                 // Upload if it doesn't match the ignorePatterns
                 syncFileCommand(filename)
             }
@@ -160,7 +154,7 @@ export function activate(context : vscode.ExtensionContext) {
             messenger.infoSuccess('Watching directory: ' + configurator.config?.rootPath)
             syncer.startTimers()
             syncer.connect()
-            if (!watcher) {
+            if (!chokidarWatcher) {
                 runWatcher()
             }
         }
@@ -199,8 +193,8 @@ export function activate(context : vscode.ExtensionContext) {
     const toggleWatcher = vscode.commands.registerCommand('sync-sftp.toggleWatcher', function () {
         isPaused = !isPaused
 
-        if (watcher && !watcher.isClosed()) {
-            watcher.close()
+        if (chokidarWatcher) {
+            chokidarWatcher.close()
         }
         if (syncer) {
             syncer.toggle()
@@ -226,8 +220,8 @@ export function activate(context : vscode.ExtensionContext) {
 
 // This method is called when your extension is deactivated
 export function deactivate() {
-    if (watcher && !watcher.isClosed()) {
-        watcher.close()
+    if (chokidarWatcher) {
+        chokidarWatcher.close()
     }
     if (statusBarInterval) {
         clearInterval(statusBarInterval)

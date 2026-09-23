@@ -318,6 +318,13 @@ chalk@^4.0.0:
     ansi-styles "^4.1.0"
     supports-color "^7.1.0"
 
+chokidar@^5.0.0:
+  version "5.0.0"
+  resolved "https://registry.yarnpkg.com/chokidar/-/chokidar-5.0.0.tgz#949c126a9238a80792be9a0265934f098af369a5"
+  integrity sha512-TQMmc3w+5AxjpL8iIiwebF73dRDF4fBIieAqGn9RGCWaEVwQ6Fb2cGe31Yns0RRIzii5goJ1Y7xbMwo1TxMplw==
+  dependencies:
+    readdirp "^5.0.0"
+
 color-convert@^1.9.0:
   version "1.9.3"
   resolved "https://registry.yarnpkg.com/color-convert/-/color-convert-1.9.3.tgz#bb71850690e1f136567de629d2d5471deda4c1e8"
@@ -805,11 +812,6 @@ node-ssh@^13.2.0:
     shell-escape "^0.2.0"
     ssh2 "^1.14.0"
 
-node-watch@^0.7:
-  version "0.7.4"
-  resolved "https://registry.yarnpkg.com/node-watch/-/node-watch-0.7.4.tgz#34557106948cd4b8ddff9aa3d284774004548824"
-  integrity sha512-RinNxoz4W1cep1b928fuFhvAQ5ag/+1UlMDV7rbyGthBIgsiEouS4kvRayvvboxii4m8eolKOIBo3OjDqbc+uQ==
-
 normalize-path@^2.1.1:
   version "2.1.1"
   resolved "https://registry.yarnpkg.com/normalize-path/-/normalize-path-2.1.1.tgz#1ab28b556e198363a8c1a6f7e6fa20137fe6aed9"
@@ -896,6 +898,11 @@ queue-microtask@^1.2.2:
   version "1.2.3"
   resolved "https://registry.yarnpkg.com/queue-microtask/-/queue-microtask-1.2.3.tgz#4929228bbc724dfac43e0efb058caf7b6cfb6243"
   integrity sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==
+
+readdirp@^5.0.0:
+  version "5.1.1"
+  resolved "https://registry.yarnpkg.com/readdirp/-/readdirp-5.1.1.tgz#520bca06f9d1ae1b96cc0800dbe84b983d19422c"
+  integrity sha512-Kko+Y5XQ6fM+Ce3dq3m9YGxnacYZYl9cA1wZjaF3Vbry2L3i1qVg8+CAgNPsXRArPMUMCaOR7oa9Nqntc43JKA==
 
 relaxed-json@^1.0.0:
   version "1.0.3"

@@ -259,36 +259,50 @@ export class Syncer {
             this.deleteFilePending.push(path)
         }
     }
+    createChunkedArray(list:string[], size:number) {
+        const chunked = [];
+        for (let i = 0; i < list.length; i += size) {
+            chunked.push(list.slice(i, i + size));
+        }
+        return chunked;
+    }
+
     deleteFileList(list:string[]) {
         if (this.isPaused) return false
-        let commandList = []
-        for (let item of list) {
-            let path = this.configurator?.config?.remotePath + '/' + item
-            commandList.push(`rm -rf "${path}"`)
-        }
-        if (commandList.length) {
-            if (this.configurator?.config?.verbose) {
-                this.logger?.debug(commandList.join(' && ').replace(/\/\/+/g,'/'));
+        let chunckedLists = this.createChunkedArray(list, 100);
+        for (let chunklist of chunckedLists) {
+            let commandList = []
+            for (let item of chunklist) {
+                let path = this.configurator?.config?.remotePath + '/' + item
+                commandList.push(`rm -rf "${path}"`)
             }
-            this.sftp.execCommand(commandList.join(' && ').replace(/\/\/+/g,'/'),{ cwd:'/var/www' });
+            if (commandList.length) {
+                if (this.configurator?.config?.verbose) {
+                    this.logger?.debug(commandList.join(' && ').replace(/\/\/+/g,'/'));
+                }
+                this.sftp.execCommand(commandList.join(' && ').replace(/\/\/+/g,'/'),{ cwd:'/var/www' });
+            }
         }
     }
 
     deleteFileListPending(list:string[]) {
         if (this.isPaused) return false
-        let commandList = []
-        for (let item of list) {
-            let path = item
-            commandList.push(`rm -rf "${path}"`)
-        }
-        if (commandList.length) {
-            let time = timeString();
-
-            if (this.configurator?.config?.verbose) {
-                this.logger?.debug(commandList.join(' && ').replace(/\/\/+/g,'/'));
+        let chunckedLists = this.createChunkedArray(list, 100);
+        for (let chunklist of chunckedLists) {
+            let commandList = []
+            for (let item of chunklist) {
+                let path = item
+                commandList.push(`rm -rf "${path}"`)
             }
-            this.sftp.execCommand(commandList.join(' && ').replace(/\/\/+/g,'/'),{ cwd:'/var/www' });
-            this.messenger?.infoSuccess(time + ' Successfully deleted ' + list.join('<br>'))
+            if (commandList.length) {
+                let time = timeString();
+
+                if (this.configurator?.config?.verbose) {
+                    this.logger?.debug(commandList.join(' && ').replace(/\/\/+/g,'/'));
+                }
+                this.sftp.execCommand(commandList.join(' && ').replace(/\/\/+/g,'/'),{ cwd:'/var/www' });
+                this.messenger?.infoSuccess(time + ' Successfully deleted ' + chunklist.join('<br>'))
+            }
         }
     }
     async detectChanges() {
