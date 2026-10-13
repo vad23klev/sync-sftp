@@ -25,7 +25,6 @@ type ConfigFileOptions = {
     useRsync?: boolean,
     rsyncRootPath: string
     verbose?: boolean,
-    isWindows?: boolean,
     useRsyncPassword?: boolean,
     uploadFileInterval?: number,
     deleteFileInterval?: number,
@@ -51,7 +50,6 @@ type ConfigOptions = {
     rsyncRootPath: string
     verbose: boolean
     useRsyncPassword: boolean,
-    isWindows: boolean,
     uploadFileInterval: number,
     deleteFileInterval: number,
     timeWithoutRSyncInterval: number,
@@ -88,7 +86,6 @@ export class Configurator {
         let rsyncRootPath = rootPath
         let sshPath = 'ssh'
         let verbose = false
-        let isWindows = false
         let useRsyncPassword = false
         let uploadFileInterval = 2000;
         let deleteFileInterval = 2000;
@@ -141,9 +138,6 @@ export class Configurator {
             if (config.useRsyncPassword) {
                 useRsyncPassword = config.useRsyncPassword
             }
-            if (config.isWindows) {
-                isWindows = config.isWindows
-            }
             if (config.uploadFileInterval) {
                 uploadFileInterval = config.uploadFileInterval
             }
@@ -183,7 +177,6 @@ export class Configurator {
             verbose,
             useRsyncPassword,
             sshpassPath,
-            isWindows,
             uploadFileInterval,
             deleteFileInterval,
             timeWithoutRSyncInterval,

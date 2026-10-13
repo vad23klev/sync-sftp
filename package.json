@@ -4,7 +4,7 @@
   "displayName": "Sync SFTP",
   "description": "Sync your project with remote using SFTP",
   "icon": "./icons/icon.png",
-  "version": "1.0.20",
+  "version": "1.0.30",
   "engines": {
     "vscode": "^1.91.0"
   },
@@ -85,6 +85,14 @@
       {
         "command": "sync-sftp.upload",
         "title": "Sync SFTP: Upload file"
+      },
+      {
+        "command": "sync-sftp.uploadForce",
+        "title": "Sync SFTP: Force upload file(without ignore)"
+      },
+      {
+        "command": "sync-sftp.download",
+        "title": "Sync SFTP: Download file(without ignore)"
       }
     ],
     "submenus": [
@@ -124,6 +132,14 @@
       "explorer/context": [
         {
           "command": "sync-sftp.upload",
+          "group": "sync-sftp"
+        },
+        {
+          "command": "sync-sftp.uploadForce",
+          "group": "sync-sftp"
+        },
+        {
+          "command": "sync-sftp.download",
           "group": "sync-sftp"
         }
       ]

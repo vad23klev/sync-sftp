@@ -32,13 +32,11 @@ function updateStatusBarItem(myStatusBarItem: vscode.StatusBarItem, syncer: Sync
     myStatusBarItem.show();
 }
 
-export function syncFile (data: SyncFileData) {
-    return async function(filename: string) {
-        if (!match(filename, data.configurator.config?.ignorePatterns ?? [])) {
+function syncFile (data: SyncFileData) {
+    return async function(filename: string, force = false) {
+        if (!match(filename, data.configurator.config?.ignorePatterns ?? []) || force) {
             let time = timeString();
-            if (data.configurator.config?.isWindows !== true) {
-                data.messenger.info(time + ' Change detected: ' + filename.replace(data.configurator.config?.rootPath ?? '', ''))
-            }
+            data.messenger.info(time + ' Change detected: ' + filename.replace(data.configurator.config?.rootPath ?? '', ''))
             let isDirectory = false;
             const exists = fs.existsSync(filename);
             let destination = data.configurator.config?.remotePath + '/' + filename.replace(data.configurator.config?.rootPath ?? '', '.');
@@ -46,13 +44,25 @@ export function syncFile (data: SyncFileData) {
             destination = destination.replace(/\/\/+/g, '/');
             if (exists) {
                 isDirectory = fs.lstatSync(filename).isDirectory();
-                data.syncer.uploadFile(destination, filename, isDirectory)
+                data.syncer.uploadFile(destination, filename, isDirectory, force)
             } else {
                 data.syncer.deleteFile(destination)
             }
         } else {
             data.onIgnore(filename)
         }
+    }
+}
+function downloadFile (data: SyncFileData) {
+    return async function(filename: string) {
+        let time = timeString();
+        data.messenger.info(time + 'Try to download: ' + filename.replace(data.configurator.config?.rootPath ?? '', ''))
+        let isDirectory = false;
+        let destination = data.configurator.config?.remotePath + '/' + filename.replace(data.configurator.config?.rootPath ?? '', '.');
+        destination = destination.replace(/\\/g, '/');
+        destination = destination.replace(/\/\/+/g, '/');
+        isDirectory = fs.lstatSync(filename).isDirectory();
+        data.syncer.downloadFile(destination, filename, isDirectory)
     }
 }
 let chokidarWatcher: any;
@@ -142,6 +152,46 @@ export function activate(context : vscode.ExtensionContext) {
             }
         }
     });
+    const uploadForce = vscode.commands.registerCommand('sync-sftp.uploadForce', function (info, allSelections) {
+        if (info && info.scheme === 'file' && configurator.isConfigLoaded && configurator.isConfigCorrect) {
+            let onIgnore = (filename: string) => {
+                const time = timeString();
+                messenger.error(time + 'Trying to upload ignored file: ' + filename)
+            }
+            uploadSyncData = {
+                configurator,
+                messenger,
+                syncer,
+                onIgnore
+            }
+            const syncFileCommand = syncFile(uploadSyncData);
+            for (let file of allSelections) {
+                let filename = file.fsPath
+                // Upload if it doesn't match the ignorePatterns
+                syncFileCommand(filename, true)
+            }
+        }
+    });
+    const download = vscode.commands.registerCommand('sync-sftp.download', function (info, allSelections) {
+        if (info && info.scheme === 'file' && configurator.isConfigLoaded && configurator.isConfigCorrect) {
+            let onIgnore = (filename: string) => {
+                const time = timeString();
+                messenger.error(time + 'Trying to upload ignored file: ' + filename)
+            }
+            uploadSyncData = {
+                configurator,
+                messenger,
+                syncer,
+                onIgnore
+            }
+            const downloadFileCommand = downloadFile(uploadSyncData);
+            for (let file of allSelections) {
+                let filename = file.fsPath
+                // Upload if it doesn't match the ignorePatterns
+                downloadFileCommand(filename)
+            }
+        }
+    });
     const reload = vscode.commands.registerCommand('sync-sftp.reloadConfig', function () {
         let configPath = vscode.workspace?.workspaceFolders && vscode.workspace?.workspaceFolders[0] ? vscode.workspace?.workspaceFolders[0].uri.fsPath : ''
         configurator.loadConfig(configPath)
@@ -211,6 +261,8 @@ export function activate(context : vscode.ExtensionContext) {
     context.subscriptions.push(reload);
     context.subscriptions.push(reconnect);
     context.subscriptions.push(upload);
+    context.subscriptions.push(uploadForce);
+    context.subscriptions.push(download);
     context.subscriptions.push(makeEqual);
     context.subscriptions.push(detectDifferences);
     context.subscriptions.push(clearQuery);
